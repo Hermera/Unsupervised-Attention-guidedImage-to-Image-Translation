@@ -101,7 +101,7 @@ venv.bak/
 /site
 
 # pdf
-.pdf
+*.pdf
 
 # mypy
 .mypy_cache/
