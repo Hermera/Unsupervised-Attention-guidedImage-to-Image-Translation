@@ -119,7 +119,10 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             W_init=tf.truncated_normal_initializer(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_input)
-        o_c1 = InstanceNorm2d(act=lrelu)(o_c1)
+        if donorm is True:
+            o_c1 = InstanceNorm2d(act=lrelu)(o_c1)
+        else:
+            o_c1 = lrelu(o_c1)
 
         pad_o_c1 = tf.pad(o_c1, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
         
@@ -132,7 +135,10 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             W_init=tf.truncated_normal_initializer(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c1)
-        o_c2 = InstanceNorm2d(act=lrelu)(o_c2)
+        if donorm is True:
+            o_c2 = InstanceNorm2d(act=lrelu)(o_c2)
+        else:
+            o_c2 = lrelu(o_c2)
 
         pad_o_c2 = tf.pad(o_c2, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
         
@@ -145,7 +151,10 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             W_init=tf.truncated_normal_initializer(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c2)
-        o_c3 = InstanceNorm2d(act=lrelu)(o_c3)
+        if donorm is True:
+            o_c3 = InstanceNorm2d(act=lrelu)(o_c3)
+        else:
+            o_c3 = lrelu(o_c3)
 
         pad_o_c3 = tf.pad(o_c3, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
         
@@ -158,7 +167,10 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             W_init=tf.truncated_normal_initializer(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c3)
-        o_c4 = InstanceNorm2d(act=lrelu)(o_c4)
+        if donorm is True:
+            o_c4 = InstanceNorm2d(act=lrelu)(o_c4)
+        else:
+            o_c4 = lrelu(o_c4)
 
         pad_o_c4 = tf.pad(o_c4, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
         
