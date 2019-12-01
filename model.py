@@ -3,19 +3,47 @@ import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
                                 LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d)
 from tensorlayer.models import Model
-from data import flags
 
 IMG_CHANNELS = 3
 
 ngf = 32
 ndf = 64
 
+def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
+    with tf.variable_scope(name):
+        out_res = tf.pad(inputres, [[0, 0], [1, 1], [1, 1], [0, 0]], padding)
+
+        out_res = Conv2d(
+            n_filter=dim,
+            filter_size=(3, 3),
+            strides=(1, 1),
+            padding="VALID",
+            act=None,
+            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            b_init=tf.constant_initializer(0.0)
+        )(out_res)
+        out_res = InstanceNorm2d(act=tf.nn.relu)(out_res)
+
+        out_res = tf.pad(out_res, [[0, 0], [1, 1], [1, 1], [0, 0]], padding)
+
+        out_res = Conv2d(
+            n_filter=dim,
+            filter_size=(3, 3),
+            strides=(1, 1),
+            padding="VALID",
+            act=None,
+            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            b_init=tf.constant_initializer(0.0)
+        )(out_res)
+        out_res = InstanceNorm2d(act=None)(out_res)
+
+        return tf.nn.relu(out_res + inputres)
+
 def build_generator_9blocks(inputgen, name="generator", skip = False):
     with tf.variable_scope(name):
         f = 7
         ks = 3
         padding  = "CONSTANT"
-        lrelu = lambda x: tl.act.lrelu(x, 0.2)
         inputgen = tf.pad(inputgen, [[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)
 
         o_c1 = Conv2d(
