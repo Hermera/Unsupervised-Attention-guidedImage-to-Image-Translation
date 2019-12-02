@@ -1,2 +1,3 @@
-# Unsupervised-Attention-Guide-Image-to-Image-Translation-group_proj
-Implementation of NIPS paper "Unsupervised-Attention-Guide-Image-to-Image-Translation"
+# Unsupervised Attention-guided Image-to-Image Translation
+
+An implementation of the paper "[Unsupervised Attention-guided Image-to-Image Translation](https://arxiv.org/pdf/1806.02311.pdf)"
