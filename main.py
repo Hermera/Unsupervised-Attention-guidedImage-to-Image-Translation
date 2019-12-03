@@ -20,6 +20,7 @@ tf.set_random_seed(1)
 np.random.seed(0)
 
 class CycleGAN:
+    # TODO: This code is for tensorflow 1.x with tl 1.x
     def __init__(self, pool_size, lambda_a,
                  lambda_b, output_root_dir, to_restore,
                  base_lr, max_step, 
@@ -54,7 +55,7 @@ class CycleGAN:
         height = model.IMG_HEIGHT
         channels = model.IMG_CHANNELS
 
-        # TODO: tensorlayer 1.0 or tensorlayer 2.0?
+        # TODO: tensorlayer 1.x only
 
         self.input_a = tf.placeholder(
             tf.float32, [
@@ -179,6 +180,109 @@ class CycleGAN:
         self.d_B_loss_summ = tf.summary.scalar("d_B_loss", d_loss_B)
 
 
+    def figure_writer(self, figures_to_save, names, v_html, html_mode):
+        """
+        A helper function to save images and updating html
+        """
+
+        for name, figure_save in zip(names, figures_to_save):
+            image_name = name + str(epoch) + "_" + str(i) + ".jpg"
+            if 'mask_' in name:
+                figure = np.squeeze(figure_save[0])
+            else:
+                figure = ((np.squeeze(figure_save[0]) + 1) * 127.5).astype(np.uint8)
+
+            tl_save_image(figure, image_path=os.path.join(self._images_dir, image_name))
+
+            # writing html automatically...
+            v_html.write(
+                "<img src=\"" +
+                os.path.join('imgs', image_name) + "\">"
+            )
+            if html_mode == 1 and 'fakeB_' in name:
+                v_html.write("<br>")
+        
+        v_html.write("<br>")
+
+
+    def save_images(self, sess, epoch, curr_tr, images_i, images_j):
+        """
+        Saves input and output images.
+        """
+        exists_or_mkdir(self._images_dir)
+
+        if curr_tr > 0:
+            donorm = False
+        else:
+            donorm = True
+
+        names = ['inputA_', 'inputB_', 'fakeA_', 'fakeB_', 
+                 'cycA_', 'cycB_', 'mask_a', 'mask_b']
+
+        with open(os.path.join(self._output_dir, 'epoch_' + str(epoch) + '.html'), 'w') as v_html:
+            input_iter = minibatches(images_i, images_j, batch_size=1, shuffle=True)
+
+            for i in range(0, self._num_imgs_to_save):
+                print("Saving image {}/{}...".format(i, self._num_imgs_to_save))
+                image_i, image_j = next(input_iter)
+                fake_A_temp, fake_B_temp, cyc_A_temp, cyc_B_temp, masks = sess.run(
+                    [self.fake_images_a,
+                     self.fake_images_b,
+                     self.cycle_images_a,
+                     self.cycle_images_b,
+                     self.masks], 
+                    feed_dict={
+                        self.input_a: image_i,
+                        self.input_b: image_j,
+                        self.transition_rate: curr_tr,
+                        self.donorm: donorm
+                    }
+                )
+
+                figures_to_save = [image_i, image_j, fake_B_temp, fake_A_temp, 
+                                   cyc_A_temp, cyc_B_temp, masks[0], masks[1]]
+
+                self.figure_writer(figures_to_save, names, v_html, html_mode=0)
+                
+
+    def save_images_bis(self, sess, epoch, images_i, images_j):
+        """
+        Saves input and output images.
+        """
+        names = ['input_A_', 'mask_A_', 'masked_inputA_', 'fakeB_',
+                 'input_B_', 'mask_B_', 'masked_inputB_', 'fakeA_']
+        space = '&nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp ' \
+                '&nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp ' \
+                '&nbsp &nbsp &nbsp &nbsp &nbsp'
+
+        exists_or_mkdir(self._images_dir)
+
+        with open(os.path.join(self._output_dir, 'results_' + str(epoch) + '.html'), 'w') as v_html:
+            v_html.write("<b>Inputs" + space + "Masks" + space + "Masked_images" + space + "Generated_images</b>")
+            v_html.write("<br>")
+
+            input_iter = minibatches(images_i, images_j, batch_size=1, shuffle=True)
+
+            for i in range(0, self._num_imgs_to_save):
+                print("Saving image {}/{}...".format(i, self._num_imgs_to_save))
+                image_i, image_j = next(input_iter)
+
+                fake_A_temp, fake_B_temp, masks, masked_ims = sess.run(
+                    [self.fake_images_a,
+                     self.fake_images_b,
+                     self.masks,
+                     self.masked_ims],
+                    feed_dict={
+                        self.input_a: image_i,
+                        self.input_b: image_j,
+                        self.transition_rate: 0.1
+                    }
+                )
+
+                figures_to_save = [image_i, masks[0], masked_ims[0], fake_B_temp,
+                                   image_j, masks[1], masked_ims[1], fake_A_temp]
+
+                self.figure_writer(figures_to_save, names, v_html, html_mode=1)
 
 
     def fake_image_pool(self, num_fakes, fake, mask, fake_pool):
@@ -238,7 +342,8 @@ class CycleGAN:
             for epoch in range(sess.run(self.global_step), self._max_step):
                 print("In the epoch ", epoch)
                 print("Saving the latest checkpoint...")
-                save_ckpt(sess, mode_name="AGGAN",
+                # TODO: note the format of the model is for tf 1.x
+                save_ckpt(sess, mode_name="AGGAN",  
                     save_dir=self._output_dir, global_step=epoch)
 
                 # Setting lr
@@ -343,11 +448,12 @@ class CycleGAN:
                             self.donorm: donorm,
                         }
                     )
-                    writer.add_summary(summary_string, epoch * max_images + i)
 
-                    writer.flush()
                     self.num_fake_inputs += 1
 
+                    writer.add_summary(summary_string, epoch * max_images + i)
+                    writer.flush()
+                    
                 sess.run(tf.assign(self.global_step, epoch + 1))
 
             coord.request_stop()
@@ -364,7 +470,8 @@ class CycleGAN:
 
         tot_inputs = data_loader.load_data(
             self._dataset_name, self._size_before_crop,
-            False, self._do_flipping, num_img=self._num_imgs_to_save)
+            False, self._do_flipping, num_img=self._num_imgs_to_save
+        )
         self.inputs_img_i = tot_inputs['images_i']
         self.inputs_img_j = tot_inputs['images_j']
         assert len(self.inputs_img_i) == len(self.inputs_img_j)
@@ -381,8 +488,8 @@ class CycleGAN:
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
 
-            self._num_imgs_to_save = cyclegan_datasets.DATASET_TO_SIZES[
-                self._dataset_name]
+            self._num_imgs_to_save = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
+
             self.save_images_bis(sess, sess.run(self.global_step),
                 self.inputs_img_i, self.inputs_img_j)
 
