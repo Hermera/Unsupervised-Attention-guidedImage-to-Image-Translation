@@ -140,15 +140,15 @@ class CycleGAN:
         lsgan_loss_b = losses.lsgan_loss_generator(self.prob_fake_b_is_real)
 
         #generator losses
-        g_loss_A = cycle_consistency_loss_a + cycle_consistency_loss_b + lsgan_loss_b 
-        g_loss_B = cycle_consistency_loss_b + cycle_consistency_loss_a + lsgan_loss_a
+        self.g_A_loss = cycle_consistency_loss_a + cycle_consistency_loss_b + lsgan_loss_b 
+        self.g_B_loss = cycle_consistency_loss_b + cycle_consistency_loss_a + lsgan_loss_a
 
         #discriminator losses
-        d_loss_A = losses.lsgan_loss_discriminator(
+        self.d_A_loss = losses.lsgan_loss_discriminator(
             prob_real_is_real=self.prob_real_a_is_real,
             prob_fake_is_real=self.prob_fake_pool_a_is_real,
         )
-        d_loss_B = losses.lsgan_loss_discriminator(
+        self.d_B_loss = losses.lsgan_loss_discriminator(
             prob_real_is_real=self.prob_real_b_is_real,
             prob_fake_is_real=self.prob_fake_pool_b_is_real,
         )
@@ -174,10 +174,10 @@ class CycleGAN:
             print(var.name)
 
         # Summary variables for tensorboard
-        self.g_A_loss_summ = tf.summary.scalar("g_A_loss", g_loss_A)
-        self.g_B_loss_summ = tf.summary.scalar("g_B_loss", g_loss_B)
-        self.d_A_loss_summ = tf.summary.scalar("d_A_loss", d_loss_A)
-        self.d_B_loss_summ = tf.summary.scalar("d_B_loss", d_loss_B)
+        self.g_A_loss_summ = tf.summary.scalar("g_A_loss", self.g_A_loss)
+        self.g_B_loss_summ = tf.summary.scalar("g_B_loss", self.g_B_loss)
+        self.d_A_loss_summ = tf.summary.scalar("d_A_loss", self.d_A_loss)
+        self.d_B_loss_summ = tf.summary.scalar("d_B_loss", self.d_B_loss)
 
 
     def figure_writer(self, figures_to_save, names, v_html, html_mode):
@@ -378,12 +378,13 @@ class CycleGAN:
                 input_iter = minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1, shuffle=True)
                 for i in range(max_images):
                     image_i, image_j = next(input_iter)
-                    print("Processing batch {}/{}...".format(i, max_images))
+                    print("Processing batch {}/{} in {}th epoch".format(i, max_images, epoch))
                     # Optimizing the G_A network
-                    _, fake_B_temp, smask_a, summary_string = sess.run(
+                    _, fake_B_temp, smask_a, g_A_loss, summary_string = sess.run(
                         [to_train_A,
                          self.fake_images_b,
                          self.masks[0],
+                         self.g_A_loss,
                          self.g_A_loss_summ],
                         feed_dict={
                             self.input_a: image_i,
@@ -400,8 +401,8 @@ class CycleGAN:
                     )
 
                     # Optimizing the D_B network
-                    _, summary_string = sess.run(
-                        [self.d_B_trainer, self.d_B_loss_summ],
+                    _, d_B_loss, summary_string = sess.run(
+                        [self.d_B_trainer, self.d_B_loss, self.d_B_loss_summ],
                         feed_dict={
                             self.input_a: image_i,
                             self.input_b: image_j,
@@ -416,10 +417,11 @@ class CycleGAN:
 
 
                     # Optimizing the G_B network
-                    _, fake_A_temp, smask_b, summary_string = sess.run(
+                    _, fake_A_temp, smask_b, g_B_loss, summary_string = sess.run(
                         [to_train_B,
                          self.fake_images_a,
                          self.masks[1],
+                         self.g_B_loss,
                          self.g_B_loss_summ],
                         feed_dict={
                             self.input_a: image_i,
@@ -436,8 +438,8 @@ class CycleGAN:
                     )
 
                     # Optimizing the D_A network
-                    _, mask_tmp__, summary_string = sess.run(
-                        [self.d_A_trainer,self.masks_, self.d_A_loss_summ],
+                    _, mask_tmp__, d_A_loss, summary_string = sess.run(
+                        [self.d_A_trainer,self.masks_, self.d_A_loss, self.d_A_loss_summ],
                         feed_dict={
                             self.input_a: image_i,
                             self.input_b: image_j,
@@ -449,8 +451,13 @@ class CycleGAN:
                         }
                     )
 
-                    self.num_fake_inputs += 1
+                    tot_loss = g_A_loss + g_B_loss + d_A_loss + d_B_loss
 
+                    print("[training_info] g_A_loss = {}, g_B_loss = {}, d_A_loss = {}, d_B_loss = {}, \
+                        tot_loss = {}, lr={}, curr_tr={}".format(g_A_loss, g_B_loss, d_A_loss, \
+                        d_B_loss, tot_loss, curr_lr, curr_tr))
+
+                    self.num_fake_inputs += 1
                     writer.add_summary(summary_string, epoch * max_images + i)
                     writer.flush()
                     
