@@ -1,3 +1,6 @@
+"""
+TODO: add parse_argument function and add the main routine (main function)
+"""
 from datetime import datetime
 import copy
 import json
@@ -19,7 +22,7 @@ from tensorlayer.iterate import minibatches
 tf.set_random_seed(1)
 np.random.seed(0)
 
-class CycleGAN:
+class CycleGAN(object):
     # TODO: This code is for tensorflow 1.x with tl 1.x
     def __init__(self, pool_size, lambda_a,
                  lambda_b, output_root_dir, to_restore,
@@ -332,8 +335,7 @@ class CycleGAN:
 
             writer = tf.summary.FileWriter(self._output_dir)
 
-            if not os.path.exists(self._output_dir):
-                os.makedirs(self._output_dir)
+            exists_or_mkdir(self._output_dir)
             
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
@@ -350,7 +352,6 @@ class CycleGAN:
                 curr_lr = self._base_lr
                 if epoch >= half_training_ep:
                     curr_lr -= self._base_lr * (epoch - half_training_ep) / half_training_ep
-
 
                 if epoch < self._switch:
                     curr_tr = 0
