@@ -1,4 +1,5 @@
 from datetime import datetime
+import copy
 import json
 import numpy as np
 import os
@@ -26,6 +27,7 @@ class CycleGAN:
         current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
 
         self._pool_size = pool_size
+        self._pool_upd_threshold = 0.5 # TODO
         self._size_before_crop = 286
         self._switch = switch
         self._threshold_fg = threshold_fg
@@ -175,6 +177,29 @@ class CycleGAN:
         self.g_B_loss_summ = tf.summary.scalar("g_B_loss", g_loss_B)
         self.d_A_loss_summ = tf.summary.scalar("d_A_loss", d_loss_A)
         self.d_B_loss_summ = tf.summary.scalar("d_B_loss", d_loss_B)
+
+
+
+
+    def fake_image_pool(self, num_fakes, fake, mask, fake_pool):
+        """
+        Maintain a pool of fake images
+        """
+        tmp = dict()
+        tmp['im'] = fake
+        tmp['mask'] = mask
+        if num_fakes < self._pool_size:
+            fake_pool.append(copy.deepcopy(tmp))
+            return tmp
+        else:
+            p = random.random()
+            if p > self._pool_upd_threshold:
+                random_id = random.randint(0, self._pool_size - 1)
+                temp = copy.deepcopy(fake_pool[random_id])
+                fake_pool[random_id] = copy.deepcopy(tmp)
+                return temp
+            else:
+                return tmp
 
 
     def train(self):
