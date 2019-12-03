@@ -13,6 +13,7 @@ import tensorlayer as tl
 from tensorlayer.files import save_ckpt, load_ckpt, exists_or_mkdir
 from tensorlayer.prepro import threading_data
 from tensorlayer.visualize import save_image as tl_save_image
+from tensorlayer.iterate import minibatches
 
 tf.set_random_seed(1)
 np.random.seed(0)
@@ -172,3 +173,189 @@ class CycleGAN:
         self.g_B_loss_summ = tf.summary.scalar("g_B_loss", g_loss_B)
         self.d_A_loss_summ = tf.summary.scalar("d_A_loss", d_loss_A)
         self.d_B_loss_summ = tf.summary.scalar("d_B_loss", d_loss_B)
+
+
+    def train(self):
+        """
+        Training Function.
+        We use batch size = 1 for training
+        """
+
+        # Build the network and compute losses
+        self.model_setup()
+        self.compute_losses()
+
+        # Initializing the global variables
+        init = (tf.global_variables_initializer(),
+                tf.local_variables_initializer())
+
+        max_images = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
+        half_training_ep = int(self._max_step / 2)
+        with tf.Session() as sess:
+            sess.run(init)
+            
+            # Restore the model to run the model from last checkpoint
+            print("Loading the latest checkpoint...")
+
+            if self._to_restore:
+                load_ckpt(sess, save_dir=self._checkpoint_dir, is_latest=True) ###
+
+            writer = tf.summary.FileWriter(self._output_dir)
+
+            if not os.path.exists(self._output_dir):
+                os.makedirs(self._output_dir)
+            
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            # Training Loop
+            for epoch in range(sess.run(self.global_step), self._max_step):
+                print("In the epoch ", epoch)
+                print("Saving the latest checkpoint...")
+                save_ckpt(sess, mode_name="AGGAN",
+                    save_dir=self._output_dir, global_step=epoch)
+
+                # Setting lr
+                curr_lr = self._base_lr
+                if epoch >= half_training_ep:
+                    curr_lr -= self._base_lr * (epoch - half_training_ep) / half_training_ep
+
+
+                if epoch < self._switch:
+                    curr_tr = 0
+                    donorm = True
+                    to_train_A = self.g_A_trainer
+                    to_train_B = self.g_B_trainer
+                else:
+                    curr_tr = self._threshold_fg
+                    donorm = False
+                    to_train_A = self.g_A_trainer_bis
+                    to_train_B = self.g_B_trainer_bis
+
+                print("Loading data...")
+                tot_inputs = data_loader.load_data(
+                    self._dataset_name, self._size_before_crop,
+                    False, self._do_flipping
+                )
+                self.inputs_img_i = tot_inputs['images_i']
+                self.inputs_img_j = tot_inputs['images_j']
+                assert len(self.inputs_img_i) == len(self.inputs_img_j)
+
+                self.save_images(sess, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
+
+                for image_i, image_j in minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1):
+                    print("Processing batch {}/{}...".format(i, max_images))
+                    # Optimizing the G_A network
+                    _, fake_B_temp, smask_a, summary_string = sess.run(
+                        [to_train_A,
+                         self.fake_images_b,
+                         self.masks[0],
+                         self.g_A_loss_summ],
+                        feed_dict={
+                            self.input_a: image_i,
+                            self.input_b: image_j,
+                            self.learning_rate: curr_lr,
+                            self.transition_rate: curr_tr,
+                            self.donorm: donorm,
+                        }
+                    )
+                    writer.add_summary(summary_string, epoch * max_images + i)
+
+                    fake_B_temp1 = self.fake_image_pool(
+                        self.num_fake_inputs, fake_B_temp, smask_a, self.fake_images_B
+                    )
+
+                    # Optimizing the D_B network
+                    _, summary_string = sess.run(
+                        [self.d_B_trainer, self.d_B_loss_summ],
+                        feed_dict={
+                            self.input_a: image_i,
+                            self.input_b: image_j,
+                            self.learning_rate: curr_lr,
+                            self.fake_pool_B: fake_B_temp1['im'],
+                            self.fake_pool_B_mask: fake_B_temp1['mask'],
+                            self.transition_rate: curr_tr,
+                            self.donorm: donorm,
+                        }
+                    )
+                    writer.add_summary(summary_string, epoch * max_images + i)
+
+
+                    # Optimizing the G_B network
+                    _, fake_A_temp, smask_b, summary_string = sess.run(
+                        [to_train_B,
+                         self.fake_images_a,
+                         self.masks[1],
+                         self.g_B_loss_summ],
+                        feed_dict={
+                            self.input_a: image_i,
+                            self.input_b: image_j,
+                            self.learning_rate: curr_lr,
+                            self.transition_rate: curr_tr,
+                            self.donorm: donorm,
+                        }
+                    )
+                    writer.add_summary(summary_string, epoch * max_images + i)
+
+                    fake_A_temp1 = self.fake_image_pool(
+                        self.num_fake_inputs, fake_A_temp, smask_b ,self.fake_images_A
+                    )
+
+                    # Optimizing the D_A network
+                    _, mask_tmp__, summary_string = sess.run(
+                        [self.d_A_trainer,self.masks_, self.d_A_loss_summ],
+                        feed_dict={
+                            self.input_a: image_i,
+                            self.input_b: image_j,
+                            self.learning_rate: curr_lr,
+                            self.fake_pool_A: fake_A_temp1['im'],
+                            self.fake_pool_A_mask: fake_A_temp1['mask'],
+                            self.transition_rate: curr_tr,
+                            self.donorm: donorm,
+                        }
+                    )
+                    writer.add_summary(summary_string, epoch * max_images + i)
+
+                    writer.flush()
+                    self.num_fake_inputs += 1
+
+                sess.run(tf.assign(self.global_step, epoch + 1))
+
+            coord.request_stop()
+            coord.join(threads)
+            writer.add_graph(sess.graph)
+
+
+    def test(self):
+        """
+        Testing Function.
+        """
+        print("Testing the results")
+        print("Loading data...")
+
+        tot_inputs = data_loader.load_data(
+            self._dataset_name, self._size_before_crop,
+            False, self._do_flipping, num_img=self._num_imgs_to_save)
+        self.inputs_img_i = tot_inputs['images_i']
+        self.inputs_img_j = tot_inputs['images_j']
+        assert len(self.inputs_img_i) == len(self.inputs_img_j)
+
+        self.model_setup()
+        init = tf.global_variables_initializer()
+
+        with tf.Session() as sess:
+            sess.run(init)
+
+            print("Loading the latest checkpoint...")
+            load_ckpt(sess, save_dir=self._checkpoint_dir, is_latest=True)
+
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(coord=coord)
+
+            self._num_imgs_to_save = cyclegan_datasets.DATASET_TO_SIZES[
+                self._dataset_name]
+            self.save_images_bis(sess, sess.run(self.global_step),
+                self.inputs_img_i, self.inputs_img_j)
+
+            coord.request_stop()
+            coord.join(threads)
