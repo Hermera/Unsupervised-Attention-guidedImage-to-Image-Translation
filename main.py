@@ -52,6 +52,8 @@ class CycleGAN:
         height = model.IMG_HEIGHT
         channels = model.IMG_CHANNELS
 
+        # TODO: tensorlayer 1.0 or tensorlayer 2.0?
+
         self.input_a = tf.placeholder(
             tf.float32, [
                 1, width, height, channels
@@ -186,8 +188,7 @@ class CycleGAN:
         self.compute_losses()
 
         # Initializing the global variables
-        init = (tf.global_variables_initializer(),
-                tf.local_variables_initializer())
+        init = (tf.global_variables_initializer(), tf.local_variables_initializer())
 
         max_images = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
         half_training_ep = int(self._max_step / 2)
@@ -198,7 +199,7 @@ class CycleGAN:
             print("Loading the latest checkpoint...")
 
             if self._to_restore:
-                load_ckpt(sess, save_dir=self._checkpoint_dir, is_latest=True) ###
+                load_ckpt(sess, save_dir=self._checkpoint_dir, is_latest=True)
 
             writer = tf.summary.FileWriter(self._output_dir)
 
@@ -239,11 +240,14 @@ class CycleGAN:
                 )
                 self.inputs_img_i = tot_inputs['images_i']
                 self.inputs_img_j = tot_inputs['images_j']
-                assert len(self.inputs_img_i) == len(self.inputs_img_j)
+                assert (len(self.inputs_img_i) == len(self.inputs_img_j)
+                    and max_images == len(self.inputs_img_i)
 
                 self.save_images(sess, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
 
-                for image_i, image_j in minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1):
+                input_iter = minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1, shuffle=True)
+                for i in range(max_images):
+                    image_i, image_j = next(input_iter)
                     print("Processing batch {}/{}...".format(i, max_images))
                     # Optimizing the G_A network
                     _, fake_B_temp, smask_a, summary_string = sess.run(
