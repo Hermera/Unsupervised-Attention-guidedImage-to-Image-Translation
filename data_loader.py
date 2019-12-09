@@ -52,37 +52,6 @@ def minibatches_unsupervised(inputs=None, batch_size=None, allow_dynamic_batch_s
         else:
             yield inputs[excerpt]
 
-"""
-def _load_samples(csv_name, image_type):
-    
-    filename_queue = tf.train.string_input_producer(
-        [csv_name])
-
-    reader = tf.TextLineReader()
-    _, csv_filename = reader.read(filename_queue)
-
-    record_defaults = [tf.constant([], dtype=tf.string),
-                       tf.constant([], dtype=tf.string)]
-
-    filename_i, filename_j = tf.decode_csv(
-        csv_name, record_defaults=record_defaults)  #csv_filename
-
-    file_contents_i = tf.io.read_file(filename_i)
-    file_contents_j = tf.io.read_file(filename_j)
-    if image_type == '.jpg':
-        image_decoded_A = tf.io.decode_jpeg(
-            file_contents_i, channels=model.IMG_CHANNELS)
-        image_decoded_B = tf.io.decode_jpeg(
-            file_contents_j, channels=model.IMG_CHANNELS)
-    elif image_type == '.png':
-        image_decoded_A = tf.io.decode_png(
-            file_contents_i, channels=model.IMG_CHANNELS, dtype=tf.uint8)
-        image_decoded_B = tf.io.decode_png(
-            file_contents_j, channels=model.IMG_CHANNELS, dtype=tf.uint8)
-
-    return image_decoded_A, image_decoded_B
-"""
-
 def load_data(dataset_name, image_size_before_crop,
               do_shuffle=False, do_flipping=False):
     
@@ -111,13 +80,6 @@ def load_data(dataset_name, image_size_before_crop,
             im_l.append(tl.prepro.imresize(
                     im, [image_size_before_crop, image_size_before_crop]))
         return im_l
-    """
-    def flip_wrapper(im_list):
-        im_l=[]
-        for im in im_list:
-            im_l.append(tl.prepro.flip_axis(im, axis=1, is_random=True))
-        return im_l
-    """
     
     # Preprocessing:
     inputs['image_i'] = resize_wrapper(inputs['image_i'], 
@@ -140,85 +102,5 @@ def load_data(dataset_name, image_size_before_crop,
     
     inputs['image_i']=(inputs['image_i']/127.5)-1
     inputs['image_j']=(inputs['image_j']/127.5)-1
-
-    """
-    # Batch    
-    if do_shuffle is True:
-        inputs['images_i'], inputs['images_j'] = minibatches_unsupervised(
-                [inputs['image_i'], inputs['image_j']],1,shuffle=True)
-    else:
-        inputs['images_i'], inputs['images_j'] = minibatches_unsupervised(
-                [inputs['image_i'], inputs['image_j']],1)
-    """
     
     return inputs
-"""
-def load_data(dataset_name, image_size_before_crop,
-              do_shuffle=False, do_flipping=False):
-    
-
-    :param dataset_name: The name of the dataset.
-    :param image_size_before_crop: Resize to this size before random cropping.
-    :param do_shuffle: Shuffle switch.
-    :param do_flipping: Flip switch.
-    :return:
-
-    
-    if dataset_name not in cyclegan_datasets.DATASET_TO_SIZES:
-        raise ValueError('split name %s was not recognized.'
-                         % dataset_name)
-
-    csv_name = cyclegan_datasets.PATH_TO_CSV[dataset_name]
-
-    image_i, image_j = _load_samples(
-        csv_name, cyclegan_datasets.DATASET_TO_IMAGETYPE[dataset_name])
-    inputs = {
-        'image_i': image_i,
-        'image_j': image_j
-    }
-
-
-    def resize_wrapper(im_list, image_size_before_crop):
-        im_l=[]
-        for im in im_list:
-            im_l.append(tl.prepro.imresize(
-                    im, [image_size_before_crop, image_size_before_crop]))
-        return im_l
-
-    def flip_wrapper(im_list):
-        im_l=[]
-        for im in im_list:
-            im_l.append(tl.prepro.flip_axis(im, axis=1, is_random=True))
-        return im_l
-
-    # Preprocessing:
-    inputs['image_i'] = resize_wrapper(inputs['image_i'], 
-          image_size_before_crop)
-    inputs['image_j'] = resize_wrapper(inputs['image_j'], 
-          image_size_before_crop)
-    
-    
-    if do_flipping is True:
-        inputs['image_i'] = flip_wrapper(inputs['image_i'])
-        inputs['image_i'] = flip_wrapper(inputs['image_i'])
-
-
-    inputs['image_i'] = tl.prepro.crop_multi(inputs['image_i'], 
-          model.IMG_WIDTH, model.IMG_HEIGHT, is_random=True)
-    inputs['image_j'] = tl.prepro.crop_multi(inputs['image_j'], 
-          model.IMG_WIDTH, model.IMG_HEIGHT, is_random=True)
-
-
-    inputs['image_i'] = tf.subtract(tf.math.divide(inputs['image_i'], 127.5), 1)
-    inputs['image_j'] = tf.subtract(tf.math.divide(inputs['image_j'], 127.5), 1)
-
-    # Batch    
-    if do_shuffle is True:
-        inputs['images_i'], inputs['images_j'] = minibatches_unsupervised(
-                [inputs['image_i'], inputs['image_j']],1,shuffle=True)
-    else:
-        inputs['images_i'], inputs['images_j'] = minibatches_unsupervised(
-                [inputs['image_i'], inputs['image_j']],1)
-
-    return inputs
-"""

@@ -29,7 +29,6 @@ def cycle_consistency_loss(real_images, generated_images):
     """
     return tl.cost.absolute_difference_error(real_images, generated_images, 
                 is_mean=True, axis=None, name=None)
-    #return tf.reduce_mean(tf.abs(real_images - generated_images))
 
 
 def mask_loss(gen_image, mask):
@@ -54,8 +53,6 @@ def lsgan_loss_generator(prob_fake_is_real):
         The total LS-GAN loss.
     """
     return tl.cost.mean_squared_error(prob_fake_is_real, 1, is_mean=True, axis=None, name=None)
-    #return tf.reduce_mean(tf.squared_difference(prob_fake_is_real, 1))
-
 
 def lsgan_loss_discriminator(prob_real_is_real, prob_fake_is_real):
     """Computes the LS-GAN loss as minimized by the discriminator.
