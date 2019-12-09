@@ -21,7 +21,7 @@ def get_outputs(inputs, skip=False):
     donorm = inputs['donorm']
 
     with tf.variable_scope('Model') as scope:
-               current_autoenc = autoenc_upsample
+        current_autoenc = autoenc_upsample
         current_discriminator = discriminator
         current_generator = build_generator_resnet_9blocks
 
@@ -170,7 +170,6 @@ def autoenc_upsample(inputae, name):
             W_init=tf.truncated_normal_initializer(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c5_end)
-        o_c6_end = InstanceNorm2d(act=None)(o_c6_end)
 
         return tf.nn.sigmoid(o_c6_end, "sigmoid")
 
