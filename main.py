@@ -10,12 +10,18 @@ import random
 import argparse
 
 
-import tensorflow as tf
+import tensorflow
+if tensorflow.__version__[0] == '2':
+    import tensorflow.compat.v1 as tf
+    tf.disable_v2_behavior()
+else:
+    import tensorflow as tf
 
 
 import cyclegan_datasets
 import data_loader, model
 from test_loss import *
+
 
 import tensorlayer as tl
 from tensorlayer.files import save_ckpt, load_ckpt, exists_or_mkdir
