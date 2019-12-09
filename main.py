@@ -371,8 +371,7 @@ class CycleGAN(object):
                 )
                 self.inputs_img_i = tot_inputs['images_i']
                 self.inputs_img_j = tot_inputs['images_j']
-                assert (len(self.inputs_img_i) == len(self.inputs_img_j)
-                    and max_images == len(self.inputs_img_i)
+                assert (len(self.inputs_img_i) == len(self.inputs_img_j) and max_images == len(self.inputs_img_i))
 
                 self.save_images(sess, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
 
