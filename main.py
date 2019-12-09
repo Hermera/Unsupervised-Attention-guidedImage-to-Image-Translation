@@ -8,10 +8,14 @@ import numpy as np
 import os
 import random
 import argparse
+
+
 import tensorflow as tf
 
+
 import cyclegan_datasets
-import data_loader, losses, model
+import data_loader, model
+from test_loss import *
 
 import tensorlayer as tl
 from tensorlayer.files import save_ckpt, load_ckpt, exists_or_mkdir
@@ -131,27 +135,27 @@ class CycleGAN(object):
 
     def compute_losses(self):
         cycle_consistency_loss_a = \
-            self._lambda_a * losses.cycle_consistency_loss(
+            self._lambda_a * cycle_consistency_loss(
                 real_images=self.input_a, generated_images=self.cycle_images_a,
             )
         cycle_consistency_loss_b = \
-            self._lambda_b * losses.cycle_consistency_loss(
+            self._lambda_b * cycle_consistency_loss(
                 real_images=self.input_b, generated_images=self.cycle_images_b,
             )
 
-        lsgan_loss_a = losses.lsgan_loss_generator(self.prob_fake_a_is_real)
-        lsgan_loss_b = losses.lsgan_loss_generator(self.prob_fake_b_is_real)
+        lsgan_loss_a = lsgan_loss_generator(self.prob_fake_a_is_real)
+        lsgan_loss_b = lsgan_loss_generator(self.prob_fake_b_is_real)
 
         #generator losses
         self.g_A_loss = cycle_consistency_loss_a + cycle_consistency_loss_b + lsgan_loss_b 
         self.g_B_loss = cycle_consistency_loss_b + cycle_consistency_loss_a + lsgan_loss_a
 
         #discriminator losses
-        self.d_A_loss = losses.lsgan_loss_discriminator(
+        self.d_A_loss = lsgan_loss_discriminator(
             prob_real_is_real=self.prob_real_a_is_real,
             prob_fake_is_real=self.prob_fake_pool_a_is_real,
         )
-        self.d_B_loss = losses.lsgan_loss_discriminator(
+        self.d_B_loss = lsgan_loss_discriminator(
             prob_real_is_real=self.prob_real_b_is_real,
             prob_fake_is_real=self.prob_fake_pool_b_is_real,
         )
