@@ -502,3 +502,79 @@ class CycleGAN(object):
 
             coord.request_stop()
             coord.join(threads)
+
+
+
+
+
+def parse_args():
+    desc = "Tensorlayer implementation of cycleGan using attention"
+    parser = argparse.ArgumentParser(description=desc)
+
+    parser.add_argument('--to_train', type=int, default=True, 
+        help='Train mode or not.')
+        
+    parser.add_argument('--log_dir',
+        type=str, default=None, help='The folder where the data is logged to.')
+
+    parser.add_argument('--config_filename', type=str, default='train', 
+        help='The name of the configuration file.')
+
+    parser.add_argument('--checkpoint_dir', type=str, default='', 
+        help='The directory of the train/test split.')
+
+    parser.add_argument('--skip', type=bool, default=False,
+        help='Whether to add skip connection between input and output.')
+
+    parser.add_argument('--switch', type=int, default=30,
+        help='In what epoch the FG starts to be fed to the discriminator')
+
+    parser.add_argument('--threshold', type=float, default=0.1,
+        help='The threshold proportion to select the FG')
+
+
+    return parser.parse_args()
+
+def main():
+    
+    args = parse_args()
+    if args is None:
+        exit()
+
+    to_train = args.to_train
+    log_dir = args.log_dir
+    config_filename = args.config_filename
+    checkpoint_dir = args.checkpoint_dir
+    skip = args.skip
+    switch = args.switch
+    threshold_fg = args.threshold
+
+    exists_or_mkdir(log_dir)
+    
+    with open(config_filename) as config_file:
+        config = json.load(config_file)
+
+
+    lambda_a = float(config['_LAMBDA_A']) if '_LAMBDA_A' in config else 10.0
+    lambda_b = float(config['_LAMBDA_B']) if '_LAMBDA_B' in config else 10.0
+    pool_size = int(config['pool_size']) if 'pool_size' in config else 50
+
+    to_restore = (to_train == 2)
+    base_lr = float(config['base_lr']) if 'base_lr' in config else 0.0002
+    max_step = int(config['max_step']) if 'max_step' in config else 200
+    dataset_name = str(config['dataset_name'])
+    do_flipping = bool(config['do_flipping'])
+
+    cyclegan_model = CycleGAN(pool_size, lambda_a, lambda_b, log_dir,
+                              to_restore, base_lr, max_step, 
+                              dataset_name, checkpoint_dir, do_flipping, skip,
+                              switch, threshold_fg)
+
+    if to_train > 0:
+        cyclegan_model.train()
+    else:
+        cyclegan_model.test()
+
+
+if __name__ == '__main__':
+    main()
