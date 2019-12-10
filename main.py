@@ -24,6 +24,7 @@ from test_loss import *
 
 
 import tensorlayer as tl
+from tensorlayer.layers import Input
 from tensorlayer.files import save_ckpt, load_ckpt, exists_or_mkdir
 from tensorlayer.prepro import threading_data
 from tensorlayer.visualize import save_image as tl_save_image
@@ -31,6 +32,7 @@ from tensorlayer.iterate import minibatches
 
 tf.set_random_seed(1)
 np.random.seed(0)
+
 
 class CycleGAN(object):
     # TODO: This code is for tensorflow 1.x with tl 1.x
@@ -70,43 +72,29 @@ class CycleGAN(object):
 
         # TODO: tensorlayer 1.x only
 
-        self.input_a = tf.placeholder(
-            tf.float32, [
-                1, width, height, channels
-            ], name="input_A")
+        self.input_a = Input(shape=[None, width, height, channels], 
+            dtype=tf.float32, name="input_A")
+        self.input_b = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="input_B")
+        
+        self.fake_pool_A = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_A")
+        self.fake_pool_B = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_B")
 
-        self.input_b = tf.placeholder(
-            tf.float32, [
-                1, width, model.height, channels
-            ], name="input_B")
-
-        self.fake_pool_A = tf.placeholder(
-            tf.float32, [
-                None, width, height, channels
-            ], name="fake_pool_A")
-
-        self.fake_pool_B = tf.placeholder(
-            tf.float32, [
-                None, width, height, channels
-            ], name="fake_pool_B")
-
-        self.fake_pool_A_mask = tf.placeholder(
-            tf.float32, [
-                None, width, height, channels
-            ], name="fake_pool_A_mask")
-
-        self.fake_pool_B_mask = tf.placeholder(
-            tf.float32, [
-                None, width, height, channels
-            ], name="fake_pool_B_mask")
+        self.fake_pool_A_mask = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_A_mask")
+        self.fake_pool_B_mask = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_B_mask")
 
         self.global_step = tf.train.get_or_create_global_step()
 
         self.num_fake_inputs = 0
 
-        self.learning_rate = tf.placeholder(tf.float32, shape=[], name="lr")
-        self.transition_rate = tf.placeholder(tf.float32, shape=[], name="tr")
-        self.donorm = tf.placeholder(tf.bool, shape=[], name="donorm")
+        # batch size = 1
+        self.learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
+        self.transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
+        self.donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
 
         inputs = {
             'images_a': self.input_a,
