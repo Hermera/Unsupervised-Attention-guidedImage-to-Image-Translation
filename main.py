@@ -70,7 +70,6 @@ class CycleGAN(object):
         height = model.IMG_HEIGHT
         channels = model.IMG_CHANNELS
 
-        # TODO: tensorlayer 1.x only
 
         self.input_a = Input(shape=[None, width, height, channels], 
             dtype=tf.float32, name="input_A")
