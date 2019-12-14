@@ -25,10 +25,12 @@ from test_loss import *
 
 import tensorlayer as tl
 from tensorlayer.layers import Input
-from tensorlayer.files import save_ckpt, load_ckpt, exists_or_mkdir
+from tensorlayer.files import exists_or_mkdir
 from tensorlayer.prepro import threading_data
 from tensorlayer.visualize import save_image as tl_save_image
 from tensorlayer.iterate import minibatches
+from tensorlayer.files import load_and_assign_npz_dict, save_npz_dict
+from tensorlayer.models import Model
 
 tf.set_random_seed(1)
 np.random.seed(0)
@@ -37,7 +39,7 @@ np.random.seed(0)
 class CycleGAN(object):
     # TODO: This code is for tensorflow 1.x with tl 1.x
     def __init__(self, pool_size, lambda_a,
-                 lambda_b, output_root_dir, to_restore,
+                 lambda_b, output_root_dir, to_restore, checkpoint_name, 
                  base_lr, max_step, 
                  dataset_name, checkpoint_dir, do_flipping, skip, switch, threshold_fg):
         current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -54,6 +56,7 @@ class CycleGAN(object):
         self._images_dir = os.path.join(self._output_dir, 'imgs')
         self._num_imgs_to_save = 20
         self._to_restore = to_restore
+        self._checkpoint_name = checkpoint_name
         self._base_lr = base_lr
         self._max_step = max_step
         self._dataset_name = dataset_name
@@ -65,7 +68,7 @@ class CycleGAN(object):
         self.fake_images_B = []
 
 
-    def model_setup(self):
+    def model_setup(self, load_dir):
         width = model.IMG_WIDTH
         height = model.IMG_HEIGHT
         channels = model.IMG_CHANNELS
@@ -124,6 +127,12 @@ class CycleGAN(object):
         self.masked_gen_ims = outputs['masked_gen_ims']
         self.masked_ims = outputs['masked_ims']
         self.masks_ = outputs['mask_tmp']
+
+
+        inp_list = [tensor for tensor in inputs.values()]
+        oup_list = [tensor for tensor in ouputs.values()]
+        return Model(inputs=inp_list, outputs=oup_list)
+
 
 
     def compute_losses(self):
@@ -313,7 +322,7 @@ class CycleGAN(object):
         """
 
         # Build the network and compute losses
-        self.model_setup()
+        net = self.model_setup()
         self.compute_losses()
 
         # Initializing the global variables
@@ -328,7 +337,8 @@ class CycleGAN(object):
             print("Loading the latest checkpoint...")
 
             if self._to_restore:
-                load_ckpt(sess, save_dir=self._checkpoint_dir, is_latest=True)
+                checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
+                load_and_assign_npz_dict(checkpoint_name, network=net)
 
             writer = tf.summary.FileWriter(self._output_dir)
 
@@ -480,14 +490,15 @@ class CycleGAN(object):
         self.inputs_img_j = tot_inputs['images_j']
         assert len(self.inputs_img_i) == len(self.inputs_img_j)
 
-        self.model_setup()
+        net = self.model_setup()
         init = tf.global_variables_initializer()
 
         with tf.Session() as sess:
             sess.run(init)
 
             print("Loading the latest checkpoint...")
-            load_ckpt(sess, save_dir=self._checkpoint_dir, is_latest=True)
+            checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
+            load_and_assign_npz_dict(self._checkpoint_name, network=net)
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
@@ -529,6 +540,9 @@ def parse_args():
     parser.add_argument('--threshold', type=float, default=0.1,
         help='The threshold proportion to select the FG')
 
+    parser.add_argument('--checkpoint_name', type=str, default='',
+        help='The suffix name of the latest checkpoint.')
+
 
     return parser.parse_args()
 
@@ -561,9 +575,14 @@ def main():
     max_step = int(config['max_step']) if 'max_step' in config else 200
     dataset_name = str(config['dataset_name'])
     do_flipping = bool(config['do_flipping'])
+    checkpoint_name = args.checkpoint_name
+
+    if checkpoint_name == '' and to_restore != 1:
+    	print("Error: please provide the latest checkpoint name.")
+    	exit()
 
     cyclegan_model = CycleGAN(pool_size, lambda_a, lambda_b, log_dir,
-                              to_restore, base_lr, max_step, 
+                              to_restore, checkpoint_name, base_lr, max_step, 
                               dataset_name, checkpoint_dir, do_flipping, skip,
                               switch, threshold_fg)
 
