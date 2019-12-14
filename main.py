@@ -351,9 +351,8 @@ class CycleGAN(object):
             for epoch in range(sess.run(self.global_step), self._max_step):
                 print("In the epoch ", epoch)
                 print("Saving the latest checkpoint...")
-                # TODO: note the format of the model is for tf 1.x
-                save_ckpt(sess, mode_name="AGGAN",  
-                    save_dir=self._output_dir, global_step=epoch)
+                save_npz_dict(net.all_weights(), os.path.join(self._output_dir, "AGGAN_%d" % epoch))
+
 
                 # Setting lr
                 curr_lr = self._base_lr
