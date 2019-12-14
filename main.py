@@ -339,6 +339,7 @@ class CycleGAN(object):
             if self._to_restore:
                 checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
                 load_and_assign_npz_dict(checkpoint_name, network=net)
+                sess.run(tf.assign(self.global_step, int(checkpoint_name[-2:])))
 
             writer = tf.summary.FileWriter(self._output_dir)
 
@@ -351,7 +352,7 @@ class CycleGAN(object):
             for epoch in range(sess.run(self.global_step), self._max_step):
                 print("In the epoch ", epoch)
                 print("Saving the latest checkpoint...")
-                save_npz_dict(net.all_weights(), os.path.join(self._output_dir, "AGGAN_%d" % epoch))
+                save_npz_dict(net.all_weights(), os.path.join(self._output_dir, "AGGAN_%2d" % epoch))
 
 
                 # Setting lr
