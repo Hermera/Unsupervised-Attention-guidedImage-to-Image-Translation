@@ -352,7 +352,7 @@ class CycleGAN(object):
             for epoch in range(sess.run(self.global_step), self._max_step):
                 print("In the epoch ", epoch)
                 print("Saving the latest checkpoint...")
-                save_npz_dict(net.all_weights(), os.path.join(self._output_dir, "AGGAN_%2d" % epoch))
+                save_npz_dict(net.all_weights, os.path.join(self._output_dir, "AGGAN_%2d" % epoch))
 
 
                 # Setting lr
@@ -441,7 +441,7 @@ class CycleGAN(object):
                     writer.add_summary(summary_string, epoch * max_images + i)
 
                     fake_A_temp1 = self.fake_image_pool(
-                        self.num_fake_inputs, fake_A_temp, smask_b ,self.fake_images_A
+                        self.num_fake_inputs, fake_A_temp, smask_b,self.fake_images_A
                     )
 
                     # Optimizing the D_A network
