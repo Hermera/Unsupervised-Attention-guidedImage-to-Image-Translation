@@ -11,6 +11,15 @@ IMG_HEIGHT = 256
 ngf = 32
 ndf = 64
 
+"""
+问题1. variable_scope的问题. 需要有名字，main里需要名字来区分哪些参数是哪个网络的，再给对应网络加梯度。但tensorflow2.x没有variable_scope
+如果用tf 1.x可以， 如果tf 2.x+tl 2.x 需要将全名显示地在name=""里加
+问题2. padding, multiply, +, tf.nn.relu, tf.nn.sigmoid, tf.concat 全部需要变成tensorlayer, 无论1.x还是2.x
+Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu和sigmoid等要用lambda layer
+问题3. tf.images.resize_images改为UpSampling2d
+可能还有别的bug
+"""
+
 
 def get_outputs(inputs, skip=False):
 
@@ -409,3 +418,79 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
 
         return o_c5
 
+
+if __name__ == "__main__":
+    width = IMG_WIDTH
+    height = IMG_HEIGHT
+    channels = IMG_CHANNELS
+
+    if tf.__version__[0] == "2":
+        input_a = Input(shape=[None, width, height, channels], 
+            dtype=tf.float32, name="input_A")
+        input_b = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="input_B")
+        
+        fake_pool_A = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_A")
+        fake_pool_B = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_B")
+
+        fake_pool_A_mask = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_A_mask")
+        fake_pool_B_mask = Input(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_B_mask")
+
+        #global_step = tf.train.get_or_create_global_step()
+
+        num_fake_inputs = 0
+
+        # batch size = 1
+        learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
+        transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
+        donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
+
+    else:
+        input_a = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels], 
+            dtype=tf.float32, name="input_A"))
+        InputLayer
+        input_b = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels], 
+            dtype=tf.float32, name="input_B"))
+        
+        fake_pool_A = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_A"))
+        fake_pool_B = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_B"))
+
+        fake_pool_A_mask = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_A_mask"))
+        fake_pool_B_mask = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+            dtype=tf.float32, name="fake_pool_B_mask"))
+
+        #global_step = tf.train.get_or_create_global_step()
+
+        num_fake_inputs = 0
+
+        # batch size = 1
+        learning_rate = tl.layers.InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="lr"))
+        transition_rate = tl.layers.InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="tr"))
+        donorm = tl.layers.InputLayer(tf.placeholder(shape=[1], dtype=tf.bool, name="donorm"))
+
+    inputs = {
+        'images_a': input_a,
+        'images_b': input_b,
+        'fake_pool_a': fake_pool_A,
+        'fake_pool_b': fake_pool_B,
+        'fake_pool_a_mask': fake_pool_A_mask,
+        'fake_pool_b_mask': fake_pool_B_mask,
+        'transition_rate': transition_rate,
+        'donorm': donorm,
+    }
+
+    outputs = get_outputs(inputs, skip=1) # all the outputs
+
+    
+
+
+    #inp_list = [tensor for tensor in inputs.values()]
+    #oup_list = [tensor for tensor in ouputs.values()]
+    #net = Model(inputs=inp_list, outputs=oup_list)
