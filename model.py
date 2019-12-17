@@ -20,6 +20,13 @@ Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu
 可能还有别的bug
 """
 
+"""
+目前跟问题有关的函数：
+1. tf.pad 用 tensorlayer.layers.PadLayer 替换
+2. nn.relu 等用在作激活函数似乎不用替换
+3. truncated_normal_initializer 可能需要用 tensorflow.keras.initializers.TruncatedNormal 替换
+wby's comment（所以不保证正确性:)）
+"""
 
 def get_outputs(inputs, skip=False):
 
