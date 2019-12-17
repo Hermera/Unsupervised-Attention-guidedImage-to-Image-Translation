@@ -5,85 +5,11 @@ from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeCo
 from tensorlayer.models import Model
 
 IMG_CHANNELS = 3
+IMG_WIDTH = 256
+IMG_HEIGHT = 256
 
 ngf = 32
 ndf = 64
-
-def get_outputs(inputs, skip=False):
-
-    images_a = inputs['images_a']
-    images_b = inputs['images_b']
-    fake_pool_a = inputs['fake_pool_a']
-    fake_pool_b = inputs['fake_pool_b']
-    fake_pool_a_mask = inputs['fake_pool_a_mask']
-    fake_pool_b_mask = inputs['fake_pool_b_mask']
-    transition_rate = inputs['transition_rate']
-    donorm = inputs['donorm']
-
-    with tf.variable_scope('Model') as scope:
-        current_autoenc = autoenc_upsample
-        current_discriminator = discriminator
-        current_generator = build_generator_resnet_9blocks
-
-        mask_a = current_autoenc(images_a, "g_A_ae")
-        mask_b = current_autoenc(images_b, "g_B_ae")
-        mask_a = tf.concat([mask_a] * 3, axis=3)
-        mask_b = tf.concat([mask_b] * 3, axis=3)
-
-        mask_a_on_a = tf.multiply(images_a, mask_a)
-        mask_b_on_b = tf.multiply(images_b, mask_b)
-
-        prob_real_a_is_real = current_discriminator(images_a, mask_a, transition_rate, donorm, "d_A")
-        prob_real_b_is_real = current_discriminator(images_b, mask_b, transition_rate, donorm, "d_B")
-
-        fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
-        fake_images_b = tf.multiply(fake_images_b_from_g, mask_a) + tf.multiply(images_a, 1-mask_a)
-
-        fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
-        fake_images_a = tf.multiply(fake_images_a_from_g, mask_b) + tf.multiply(images_b, 1-mask_b)
-        scope.reuse_variables()
-
-        prob_fake_a_is_real = current_discriminator(fake_images_a, mask_b, transition_rate, donorm, "d_A")
-        prob_fake_b_is_real = current_discriminator(fake_images_b, mask_a, transition_rate, donorm, "d_B")
-
-        mask_acycle = current_autoenc(fake_images_a, "g_A_ae")
-        mask_bcycle = current_autoenc(fake_images_b, "g_B_ae")
-        mask_bcycle = tf.concat([mask_bcycle] * 3, axis=3)
-        mask_acycle = tf.concat([mask_acycle] * 3, axis=3)
-
-        mask_acycle_on_fakeA = tf.multiply(fake_images_a, mask_acycle)
-        mask_bcycle_on_fakeB = tf.multiply(fake_images_b, mask_bcycle)
-
-        cycle_images_a_from_g = current_generator(fake_images_b, name="g_B", skip=skip)
-        cycle_images_b_from_g = current_generator(fake_images_a, name="g_A", skip=skip)
-
-        cycle_images_a = tf.multiply(cycle_images_a_from_g,
-                                     mask_bcycle) + tf.multiply(fake_images_b, 1 - mask_bcycle)
-
-        cycle_images_b = tf.multiply(cycle_images_b_from_g,
-                                     mask_acycle) + tf.multiply(fake_images_a, 1 - mask_acycle)
-
-        scope.reuse_variables()
-
-        prob_fake_pool_a_is_real = current_discriminator(fake_pool_a, fake_pool_a_mask, transition_rate, donorm, "d_A")
-        prob_fake_pool_b_is_real = current_discriminator(fake_pool_b, fake_pool_b_mask, transition_rate, donorm, "d_B")
-
-    return {
-        'prob_real_a_is_real': prob_real_a_is_real,
-        'prob_real_b_is_real': prob_real_b_is_real,
-        'prob_fake_a_is_real': prob_fake_a_is_real,
-        'prob_fake_b_is_real': prob_fake_b_is_real,
-        'prob_fake_pool_a_is_real': prob_fake_pool_a_is_real,
-        'prob_fake_pool_b_is_real': prob_fake_pool_b_is_real,
-        'cycle_images_a': cycle_images_a,
-        'cycle_images_b': cycle_images_b,
-        'fake_images_a': fake_images_a,
-        'fake_images_b': fake_images_b,
-        'masked_ims': [mask_a_on_a, mask_b_on_b, mask_acycle_on_fakeA, mask_bcycle_on_fakeB],
-        'masks': [mask_a, mask_b, mask_acycle, mask_bcycle],
-        'masked_gen_ims' : [fake_images_b_from_g, fake_images_a_from_g , cycle_images_a_from_g, cycle_images_b_from_g],
-        'mask_tmp' : mask_a,
-    }
 
 def upsamplingDeconv(inputconv, size, is_scale, method, align_corners, name):
     if len(inputconv.get_shape()) == 3:
@@ -404,3 +330,130 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         )(pad_o_c4)
 
         return o_c5
+
+
+def get_outputs(inputs, skip=False):
+
+    images_a = inputs['images_a']
+    images_b = inputs['images_b']
+    fake_pool_a = inputs['fake_pool_a']
+    fake_pool_b = inputs['fake_pool_b']
+    fake_pool_a_mask = inputs['fake_pool_a_mask']
+    fake_pool_b_mask = inputs['fake_pool_b_mask']
+    transition_rate = inputs['transition_rate']
+    donorm = inputs['donorm']
+
+    with tf.variable_scope('Model') as scope:
+        current_autoenc = autoenc_upsample
+        current_discriminator = discriminator
+        current_generator = build_generator_9blocks
+
+        mask_a = current_autoenc(images_a, "g_A_ae")
+        mask_b = current_autoenc(images_b, "g_B_ae")
+        mask_a = tf.concat([mask_a] * 3, axis=3)
+        mask_b = tf.concat([mask_b] * 3, axis=3)
+
+        mask_a_on_a = tf.multiply(images_a, mask_a)
+        mask_b_on_b = tf.multiply(images_b, mask_b)
+
+        prob_real_a_is_real = current_discriminator(images_a, mask_a, transition_rate, donorm, "d_A")
+        prob_real_b_is_real = current_discriminator(images_b, mask_b, transition_rate, donorm, "d_B")
+
+        fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
+        fake_images_b = tf.multiply(fake_images_b_from_g, mask_a) + tf.multiply(images_a, 1-mask_a)
+
+        fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
+        fake_images_a = tf.multiply(fake_images_a_from_g, mask_b) + tf.multiply(images_b, 1-mask_b)
+        scope.reuse_variables()
+
+        prob_fake_a_is_real = current_discriminator(fake_images_a, mask_b, transition_rate, donorm, "d_A")
+        prob_fake_b_is_real = current_discriminator(fake_images_b, mask_a, transition_rate, donorm, "d_B")
+
+        mask_acycle = current_autoenc(fake_images_a, "g_A_ae")
+        mask_bcycle = current_autoenc(fake_images_b, "g_B_ae")
+        mask_bcycle = tf.concat([mask_bcycle] * 3, axis=3)
+        mask_acycle = tf.concat([mask_acycle] * 3, axis=3)
+
+        mask_acycle_on_fakeA = tf.multiply(fake_images_a, mask_acycle)
+        mask_bcycle_on_fakeB = tf.multiply(fake_images_b, mask_bcycle)
+
+        cycle_images_a_from_g = current_generator(fake_images_b, name="g_B", skip=skip)
+        cycle_images_b_from_g = current_generator(fake_images_a, name="g_A", skip=skip)
+
+        cycle_images_a = tf.multiply(cycle_images_a_from_g,
+                                     mask_bcycle) + tf.multiply(fake_images_b, 1 - mask_bcycle)
+
+        cycle_images_b = tf.multiply(cycle_images_b_from_g,
+                                     mask_acycle) + tf.multiply(fake_images_a, 1 - mask_acycle)
+
+        scope.reuse_variables()
+
+        prob_fake_pool_a_is_real = current_discriminator(fake_pool_a, fake_pool_a_mask, transition_rate, donorm, "d_A")
+        prob_fake_pool_b_is_real = current_discriminator(fake_pool_b, fake_pool_b_mask, transition_rate, donorm, "d_B")
+
+    return {
+        'prob_real_a_is_real': prob_real_a_is_real,
+        'prob_real_b_is_real': prob_real_b_is_real,
+        'prob_fake_a_is_real': prob_fake_a_is_real,
+        'prob_fake_b_is_real': prob_fake_b_is_real,
+        'prob_fake_pool_a_is_real': prob_fake_pool_a_is_real,
+        'prob_fake_pool_b_is_real': prob_fake_pool_b_is_real,
+        'cycle_images_a': cycle_images_a,
+        'cycle_images_b': cycle_images_b,
+        'fake_images_a': fake_images_a,
+        'fake_images_b': fake_images_b,
+        'masked_ims': [mask_a_on_a, mask_b_on_b, mask_acycle_on_fakeA, mask_bcycle_on_fakeB],
+        'masks': [mask_a, mask_b, mask_acycle, mask_bcycle],
+        'masked_gen_ims' : [fake_images_b_from_g, fake_images_a_from_g , cycle_images_a_from_g, cycle_images_b_from_g],
+        'mask_tmp' : mask_a,
+    }
+
+if __name__ == "__main__":
+    width = IMG_WIDTH
+    height = IMG_HEIGHT
+    channels = IMG_CHANNELS
+
+
+    input_a = Input(shape=[None, width, height, channels], 
+        dtype=tf.float32, name="input_A")
+    input_b = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="input_B")
+    
+    fake_pool_A = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_A")
+    fake_pool_B = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_B")
+
+    fake_pool_A_mask = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_A_mask")
+    fake_pool_B_mask = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_B_mask")
+
+    #global_step = tf.train.get_or_create_global_step()
+
+    num_fake_inputs = 0
+
+    # batch size = 1
+    learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
+    transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
+    donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
+
+    inputs = {
+        'images_a': input_a,
+        'images_b': input_b,
+        'fake_pool_a': fake_pool_A,
+        'fake_pool_b': fake_pool_B,
+        'fake_pool_a_mask': fake_pool_A_mask,
+        'fake_pool_b_mask': fake_pool_B_mask,
+        'transition_rate': transition_rate,
+        'donorm': donorm,
+    }
+
+    outputs = get_outputs(inputs, skip=1) # all the outputs
+
+    
+
+
+    inp_list = [tensor for tensor in inputs.values()]
+    oup_list = [tensor for tensor in ouputs.values()]
+    net = Model(inputs=inp_list, outputs=oup_list)
