@@ -251,7 +251,7 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         return tf.nn.relu(out_res + inputres)
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         f = 7
         ks = 3
         padding  = "CONSTANT"
@@ -340,7 +340,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         return out_gen
 
 def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         mask = tf.cast(tf.greater_equal(mask, transition_rate), tf.float32)
         inputdisc = tf.multiply(inputdisc, mask)
         f = 4
