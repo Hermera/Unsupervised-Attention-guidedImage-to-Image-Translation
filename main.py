@@ -1,7 +1,6 @@
 """
 TODO: add parse_argument function and add the main routine (main function)
 """
-from datetime import datetime
 import copy
 import json
 import numpy as np
@@ -39,8 +38,6 @@ class CycleGAN(object):
                  lambda_b, output_root_dir, to_restore, checkpoint_name, 
                  base_lr, max_step, 
                  dataset_name, checkpoint_dir, do_flipping, skip, switch, threshold_fg):
-        current_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-
         self._pool_size = pool_size
         self._pool_upd_threshold = 0.5 # TODO
         self._size_before_crop = 286
@@ -48,8 +45,8 @@ class CycleGAN(object):
         self._threshold_fg = threshold_fg
         self._lambda_a = lambda_a
         self._lambda_b = lambda_b
-        self._output_dir = os.path.join(output_root_dir, current_time +
-                                        '_switch'+str(switch)+'_thres_'+str(threshold_fg))
+        self._output_dir = os.path.join(output_root_dir,
+                                        'switch'+str(switch)+'_thres_'+str(threshold_fg))
         self._images_dir = os.path.join(self._output_dir, 'imgs')
         self._num_imgs_to_save = 20
         self._to_restore = to_restore
@@ -186,7 +183,7 @@ class CycleGAN(object):
         self.d_B_loss_summ = tf.summary.scalar("d_B_loss", self.d_B_loss)
 
 
-    def figure_writer(self, figures_to_save, names, v_html, html_mode):
+    def figure_writer(self, figures_to_save, names, v_html, epoch, html_mode):
         """
         A helper function to save images and updating html
         """
@@ -248,7 +245,7 @@ class CycleGAN(object):
                 figures_to_save = [image_i, image_j, fake_B_temp, fake_A_temp, 
                                    cyc_A_temp, cyc_B_temp, masks[0], masks[1]]
 
-                self.figure_writer(figures_to_save, names, v_html, html_mode=0)
+                self.figure_writer(figures_to_save, names, v_html, epoch, html_mode=0)
                 
 
     def save_images_bis(self, sess, epoch, images_i, images_j):
@@ -288,7 +285,7 @@ class CycleGAN(object):
                 figures_to_save = [image_i, masks[0], masked_ims[0], fake_B_temp,
                                    image_j, masks[1], masked_ims[1], fake_A_temp]
 
-                self.figure_writer(figures_to_save, names, v_html, html_mode=1)
+                self.figure_writer(figures_to_save, names, v_html, epoch, html_mode=1)
 
 
     def fake_image_pool(self, num_fakes, fake, mask, fake_pool):
