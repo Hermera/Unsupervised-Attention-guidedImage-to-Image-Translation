@@ -1,4 +1,4 @@
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
                                 LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d)
