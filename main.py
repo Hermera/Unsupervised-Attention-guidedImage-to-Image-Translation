@@ -32,9 +32,6 @@ from tensorlayer.iterate import minibatches
 from tensorlayer.files import load_and_assign_npz_dict, save_npz_dict
 from tensorlayer.models import Model
 
-tf.set_random_seed(1)
-np.random.seed(0)
-
 
 class CycleGAN(object):
     # TODO: This code is for tensorflow 1.x with tl 1.x
