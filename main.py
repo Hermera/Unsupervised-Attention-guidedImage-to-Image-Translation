@@ -62,7 +62,7 @@ class CycleGAN(object):
         self.fake_images_B = []
 
 
-    def model_setup(self, load_dir):
+    def model_setup(self):
         width = model.IMG_WIDTH
         height = model.IMG_HEIGHT
         channels = model.IMG_CHANNELS
@@ -571,7 +571,7 @@ def main():
     do_flipping = bool(config['do_flipping'])
     checkpoint_name = args.checkpoint_name
 
-    if checkpoint_name == '' and to_restore != 1:
+    if checkpoint_name == '' and to_train != 1:
     	print("Error: please provide the latest checkpoint name.")
     	exit()
 
