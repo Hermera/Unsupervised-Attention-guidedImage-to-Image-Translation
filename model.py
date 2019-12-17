@@ -119,7 +119,7 @@ def autoenc_upsample(inputae, name):
             filter_size=(f, f),
             strides=(2, 2),
             act=None,
-            padding="VALID"
+            padding="VALID",
             W_init=tf.truncated_normal_initializer(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_input)
