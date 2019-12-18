@@ -29,13 +29,12 @@ from tensorlayer.models import Model
 
 
 class CycleGAN(object):
-    # TODO: This code is for tensorflow 1.x with tl 1.x
     def __init__(self, pool_size, lambda_a,
                  lambda_b, output_root_dir, to_restore, checkpoint_name, 
                  base_lr, max_step, 
                  dataset_name, checkpoint_dir, do_flipping, skip, switch, threshold_fg):
         self._pool_size = pool_size
-        self._pool_upd_threshold = 0.5 # TODO
+        self._pool_upd_threshold = 0.5
         self._size_before_crop = 286
         self._switch = switch
         self._threshold_fg = threshold_fg
