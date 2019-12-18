@@ -24,7 +24,7 @@ Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu
 目前跟问题有关的函数：
 1. tf.pad 用 tensorlayer.layers.PadLayer 替换
 2. nn.relu 等用在作激活函数似乎不用替换
-3. truncated_normal_initializer 可能需要用 tensorflow.keras.initializers.TruncatedNormal 替换
+3. truncated_normal_initializer 可能需要用 tf.initializers.TruncatedNormal 替换
 wby's comment（所以不保证正确性:)）
 """
 
@@ -222,7 +222,7 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
 
 def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.variable_scope(name):
-        out_res = tf.pad(inputres, [[0, 0], [1, 1], [1, 1], [0, 0]], padding)
+        out_res = tl.layers.PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(inputres)
 
         out_res = Conv2d(
             n_filter=dim,
@@ -230,12 +230,12 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(out_res)
         out_res = InstanceNorm2d(act=tf.nn.relu)(out_res)
 
-        out_res = tf.pad(out_res, [[0, 0], [1, 1], [1, 1], [0, 0]], padding)
+        out_res = tl.layers.PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(out_res)
 
         out_res = Conv2d(
             n_filter=dim,
@@ -243,7 +243,7 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
@@ -251,11 +251,11 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         return tf.nn.relu(out_res + inputres)
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         f = 7
         ks = 3
         padding  = "CONSTANT"
-        inputgen = tf.pad(inputgen, [[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)
+        inputgen = tl.layers.PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputgen)
 
         o_c1 = Conv2d(
             n_filter=ngf,
@@ -263,7 +263,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(inputgen)
         o_c1 = InstanceNorm2d(act=tf.nn.relu)(o_c1)
@@ -274,7 +274,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             strides=(2, 2),
             padding="SAME",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c1)
         o_c2 = InstanceNorm2d(act=tf.nn.relu)(o_c2)
@@ -285,7 +285,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             strides=(2, 2),
             padding="SAME",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c2)
         o_c3 = InstanceNorm2d(act=tf.nn.relu)(o_c3)
@@ -306,7 +306,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             strides=(2, 2),
             padding="SAME",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_r9)
         o_c4 = InstanceNorm2d(act=tf.nn.relu)(o_c4)
@@ -317,7 +317,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             strides=(2, 2),
             padding="SAME",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c4)
         o_c5 = InstanceNorm2d(act=tf.nn.relu)(o_c5)
@@ -328,7 +328,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             strides=(1, 1),
             padding="SAME",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c5)
 
@@ -340,14 +340,14 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         return out_gen
 
 def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         mask = tf.cast(tf.greater_equal(mask, transition_rate), tf.float32)
         inputdisc = tf.multiply(inputdisc, mask)
         f = 4
         padw = 2
         lrelu = lambda x: tl.act.lrelu(x, 0.2)
 
-        pad_input = tf.pad(inputdisc, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
+        pad_input = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(inputdisc)
 
         o_c1 = Conv2d(
             n_filter=ndf,
@@ -355,7 +355,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             strides=(2, 2),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_input)
         if donorm is True:
@@ -363,7 +363,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c1 = lrelu(o_c1)
 
-        pad_o_c1 = tf.pad(o_c1, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
+        pad_o_c1 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c1)
 
         o_c2 = Conv2d(
             n_filter=ndf * 2,
@@ -371,7 +371,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             strides=(2, 2),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c1)
         if donorm is True:
@@ -379,7 +379,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c2 = lrelu(o_c2)
 
-        pad_o_c2 = tf.pad(o_c2, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
+        pad_o_c2 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c2)
 
         o_c3 = Conv2d(
             n_filter=ndf * 4,
@@ -387,7 +387,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             strides=(2, 2),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c2)
         if donorm is True:
@@ -395,7 +395,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c3 = lrelu(o_c3)
 
-        pad_o_c3 = tf.pad(o_c3, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
+        pad_o_c3 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c3)
 
         o_c4 = Conv2d(
             n_filter=ndf * 8,
@@ -403,7 +403,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c3)
         if donorm is True:
@@ -411,7 +411,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c4 = lrelu(o_c4)
 
-        pad_o_c4 = tf.pad(o_c4, [[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")
+        pad_o_c4 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c4)
 
         o_c5 = Conv2d(
             n_filter=1,
@@ -419,7 +419,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             strides=(1, 1),
             padding="VALID",
             act=lrelu,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c4)
 
