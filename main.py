@@ -121,6 +121,8 @@ class CycleGAN(object):
         self.d_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
         self.d_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
 
+        return net
+
 
     def input_converter(self):
         return [self.input_a, self.input_b, self.fake_pool_A, self.fake_pool_B, 
@@ -182,7 +184,7 @@ class CycleGAN(object):
 
 
 
-    def figure_writer(self, figures_to_save, names, v_html, epoch, html_mode):
+    def figure_writer(self, figures_to_save, names, v_html, epoch, i, html_mode):
         """
         A helper function to save images and updating html
         """
@@ -249,7 +251,7 @@ class CycleGAN(object):
                 figures_to_save = [self.image_a, self.image_b, self.fake_images_b, self.fake_images_a, 
                                    self.cycle_images_a, self.cycle_images_b, self.masks[0], self.masks[1]]
 
-                self.figure_writer(figures_to_save, names, v_html, epoch, html_mode=0)
+                self.figure_writer(figures_to_save, names, v_html, epoch, i, html_mode=0)
                 
 
     def save_images_bis(self, net, epoch, images_i, images_j):
@@ -296,7 +298,7 @@ class CycleGAN(object):
                 figures_to_save = [self.image_a, self.masks[0], self.masked_ims[0], self.fake_images_b,
                                    self.image_b, self.masks[1], self.masked_ims[1], self.fake_images_a]
 
-                self.figure_writer(figures_to_save, names, v_html, epoch, html_mode=1)
+                self.figure_writer(figures_to_save, names, v_html, epoch, i, html_mode=1)
 
 
     def upd_fake_image_pool(self, num_fakes, fake, mask, fake_pool):
@@ -440,7 +442,7 @@ class CycleGAN(object):
                 grad = tape.gradient(self.g_A_loss, to_train_A_vars)
                 to_train_A.apply_gradients(zip(grad, to_train_A_vars))
 
-                grad = tape.gradients(self.g_B_loss, to_train_B_vars)
+                grad = tape.gradient(self.g_B_loss, to_train_B_vars)
                 to_train_B.apply_gradients(zip(grad, to_train_B_vars))
 
                 tot_loss = self.g_A_loss + self.g_B_loss + self.d_A_loss + self.d_B_loss
@@ -464,7 +466,7 @@ class CycleGAN(object):
 
         tot_inputs = data_loader.load_data(
             self._dataset_name, self._size_before_crop,
-            False, self._do_flipping, num_img=self._num_imgs_to_save
+            False, self._do_flipping
         )
         self.inputs_img_i = tot_inputs['images_i']
         self.inputs_img_j = tot_inputs['images_j']
@@ -480,7 +482,7 @@ class CycleGAN(object):
 
         print("Loading the latest checkpoint...")
         checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
-        load_and_assign_npz_dict(self._checkpoint_name, network=net)
+        load_and_assign_npz_dict(checkpoint_name, network=net)
         self.global_step = int(self._checkpoint_name[-2:])
 
         self._num_imgs_to_save = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
