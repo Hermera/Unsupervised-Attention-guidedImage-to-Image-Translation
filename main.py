@@ -9,12 +9,8 @@ import random
 import argparse
 
 
-import tensorflow
-if tensorflow.__version__[0] == '2':
-    import tensorflow.compat.v1 as tf
-    tf.disable_v2_behavior()
-else:
-    import tensorflow as tf
+import tensorflow as tf
+assert tf.__version__[0] == '2'
 
 
 import cyclegan_datasets
@@ -352,9 +348,9 @@ class CycleGAN(object):
 
         exists_or_mkdir(self._output_dir)
 
-        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_A
+        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_A,
             self.fake_pool_A_mask, self.fake_images_A)
-        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_B
+        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_B,
             self.fake_pool_B_mask, self.fake_images_B)
         self.num_fake_inputs += 1
         
@@ -477,9 +473,9 @@ class CycleGAN(object):
 
         net = self.model_setup()
 
-        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_A
+        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_A,
             self.fake_pool_A_mask, self.fake_images_A)
-        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_B
+        self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_B,
             self.fake_pool_B_mask, self.fake_images_B)
         self.num_fake_inputs += 1
 
