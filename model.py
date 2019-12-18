@@ -13,7 +13,7 @@ ndf = 64
 
 """
 问题1. variable_scope的问题. 需要有名字，main里需要名字来区分哪些参数是哪个网络的，再给对应网络加梯度。但tensorflow2.x没有variable_scope
-如果用tf 1.x可以， 如果tf 2.x+tl 2.x 需要将全名显示地在name=""里加
+如果用tf 1.x可以， tf 2.x用compat.v1.variable_scope可以.
 问题2. padding, multiply, +, tf.nn.relu, tf.nn.sigmoid, tf.concat 全部需要变成tensorlayer, 无论1.x还是2.x
 Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu和sigmoid等要用lambda layer
 问题3. tf.images.resize_images改为UpSampling2d
