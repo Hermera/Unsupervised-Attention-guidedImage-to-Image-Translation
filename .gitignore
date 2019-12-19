@@ -100,8 +100,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# pdf
+# pdf, zip
 *.pdf
+*.zip
 
 # .vscode
 .vscode*
