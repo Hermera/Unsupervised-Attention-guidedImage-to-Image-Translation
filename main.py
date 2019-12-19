@@ -15,7 +15,7 @@ assert tf.__version__[0] == '2'
 
 import cyclegan_datasets
 import data_loader, model
-from test_loss import *
+from test_loss import cycle_consistency_loss, lsgan_loss_discriminator, lsgan_loss_generator
 
 
 import tensorlayer as tl
