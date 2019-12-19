@@ -311,10 +311,8 @@ class CycleGAN(object):
         if num_fakes < self._pool_size:
             fake_pool.append(copy.deepcopy(tmp))
         else:
-            p = random.random()
-            if p > self._pool_upd_threshold:
-                random_id = random.randint(0, self._pool_size - 1)
-                fake_pool[random_id] = copy.deepcopy(tmp)
+            random_id = random.randint(0, self._pool_size - 1)
+            fake_pool[random_id] = copy.deepcopy(tmp)
 
 
     def get_fake_image_pool(self, num_fakes, fake_pool):
