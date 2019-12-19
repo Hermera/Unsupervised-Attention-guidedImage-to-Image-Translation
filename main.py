@@ -310,13 +310,19 @@ class CycleGAN(object):
         tmp['mask'] = mask.numpy()
         if num_fakes < self._pool_size:
             fake_pool.append(copy.deepcopy(tmp))
+            if num_fakes == 1:
+                fake_pool[0] = copy.deepcopy(tmp)
         else:
             random_id = random.randint(0, self._pool_size - 1)
             fake_pool[random_id] = copy.deepcopy(tmp)
 
 
     def get_fake_image_pool(self, num_fakes, fake_pool):
-        random_id = random.randint(0, num_fakes - 1)
+        num_fakes = min(num_fakes, self._pool_size)
+        random_id = num_fakes - 1
+        if random.random() > self._pool_upd_threshold:
+            random_id = random.randint(0, num_fakes - 1)
+        
         temp = copy.deepcopy(fake_pool[random_id])
         return temp
 
