@@ -53,8 +53,18 @@ def load_data(dataset_name, image_size_before_crop,
     if dataset_name not in cyclegan_datasets.DATASET_TO_SIZES:
         raise ValueError('split name %s was not recognized.'
                          % dataset_name)
+
+    prefix_name, suffix_name = dataset_name.split("_")
     
-    image_i, image_j, _, _ = tl.files.load_cyclegan_dataset(dataset_name, path='input')
+    train_i, train_j, test_i, test_j = tl.files.load_cyclegan_dataset(prefix_name, path='input')
+
+    assert suffix_name == "train" or suffix_name == "test"
+    
+    if suffix_name == "train":
+        image_i, image_j = train_i, train_j
+    else:
+        image_i, image_j = test_i, test_j
+
     num_rows = cyclegan_datasets.DATASET_TO_SIZES[dataset_name]
     
     if len(image_i) < num_rows:
