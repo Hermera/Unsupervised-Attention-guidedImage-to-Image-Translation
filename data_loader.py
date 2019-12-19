@@ -75,8 +75,8 @@ def load_data(dataset_name, image_size_before_crop,
             image_j.append(image_j[j%len(image_j)])
     
     inputs = {
-        'image_i': image_i,
-        'image_j': image_j
+        'images_i': image_i,
+        'images_j': image_j
     }
 
     def resize_wrapper(im_list, image_size_before_crop):
@@ -87,25 +87,25 @@ def load_data(dataset_name, image_size_before_crop,
         return im_l
     
     # Preprocessing:
-    inputs['image_i'] = resize_wrapper(inputs['image_i'], 
+    inputs['images_i'] = resize_wrapper(inputs['images_i'], 
           image_size_before_crop)
-    inputs['image_j'] = resize_wrapper(inputs['image_j'], 
+    inputs['images_j'] = resize_wrapper(inputs['images_j'], 
           image_size_before_crop)
     
     
     if do_flipping is True:
-        inputs['image_i'] = tl.prepro.flip_axis(inputs['image_i'], axis=1, is_random=True)
-        inputs['image_j'] = tl.prepro.flip_axis(inputs['image_j'], axis=1, is_random=True)
+        inputs['images_i'] = tl.prepro.flip_axis(inputs['images_i'], axis=1, is_random=True)
+        inputs['images_j'] = tl.prepro.flip_axis(inputs['images_j'], axis=1, is_random=True)
 
-    inputs['image_i'] = tl.prepro.crop_multi(inputs['image_i'], 
+    inputs['images_i'] = tl.prepro.crop_multi(inputs['images_i'], 
           model.IMG_WIDTH, model.IMG_HEIGHT, is_random=True)
-    inputs['image_j'] = tl.prepro.crop_multi(inputs['image_j'], 
+    inputs['images_j'] = tl.prepro.crop_multi(inputs['images_j'], 
           model.IMG_WIDTH, model.IMG_HEIGHT, is_random=True)
 
-    inputs['image_i']=np.array(inputs['image_i'])
-    inputs['image_j']=np.array(inputs['image_j'])
+    inputs['images_i']=np.array(inputs['images_i'])
+    inputs['images_j']=np.array(inputs['images_j'])
     
-    inputs['image_i']=(inputs['image_i']/127.5)-1
-    inputs['image_j']=(inputs['image_j']/127.5)-1
+    inputs['images_i']=(inputs['images_i']/127.5)-1
+    inputs['images_j']=(inputs['images_j']/127.5)-1
     
     return inputs

@@ -56,6 +56,11 @@ class CycleGAN(object):
         self.fake_images_A = []
         self.fake_images_B = []
 
+        tot_inputs = data_loader.load_data(
+            self._dataset_name, self._size_before_crop,
+            False, self._do_flipping
+        )
+
 
     def model_setup(self):
         width = model.IMG_WIDTH
