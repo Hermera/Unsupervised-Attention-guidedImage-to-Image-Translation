@@ -106,33 +106,15 @@ def get_outputs(inputs, skip=False):
     }
 
 
-def upsamplingDeconv(inputconv, size, is_scale, method, align_corners, name):
-    if len(inputconv.get_shape()) == 3:
-        if is_scale:
-            size_h = size[0] * int(inputconv.get_shape()[0])
-            size_w = size[1] * int(inputconv.get_shape()[1])
-            size = [int(size_h), int(size_w)]
-    elif len(inputconv.get_shape()) == 4:
-        if is_scale:
-            size_h = size[0] * int(inputconv.get_shape()[1])
-            size_w = size[1] * int(inputconv.get_shape()[2])
-            size = [int(size_h), int(size_w)]
-    else:
-        raise Exception("Donot support shape %s" % inputconv.get_shape())
-    print("  [TL] UpSampling2dLayer %s: is_scale:%s size:%s method:%d align_corners:%s" %
-          (name, is_scale, size, method, align_corners))
+def upsamplingDeconv(inputconv, size, name):
+    size_h = size[0] / int(inputconv.get_shape()[1])
+    size_w = size[1] / int(inputconv.get_shape()[2])
+    size = (int(size_h), int(size_w))
 
-    try:
-        with tf.variable_scope(name) as vs:
-            try:
-                out = tf.image.resize_images(inputconv, size=size, method=method, align_corners=align_corners)
-            except:  # for TF 0.10
-                out = tf.image.resize_images(inputconv, new_height=size[0], new_width=size[1], method=method, align_corners=align_corners)
-
-    except: # for TF 2.0
-        with tf.compat.v1.variable_scope(name) as vs:
-            out = UpSampling2d(scale=size, method="nearest")(inputconv)
+    with tf.compat.v1.variable_scope(name) as vs:
+        out = UpSampling2d(scale=size, method="nearest")(inputconv)
     return out
+
 
 def autoenc_upsample(inputae, name):
     with tf.compat.v1.variable_scope(name):
@@ -141,6 +123,7 @@ def autoenc_upsample(inputae, name):
         padding = "REFLECT"
 
         pad_input = PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputae)
+
         o_c1 = Conv2d(
             n_filter=ngf,
             filter_size=(f, f),
@@ -150,9 +133,11 @@ def autoenc_upsample(inputae, name):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_input)
+
         o_c1 = InstanceNorm2d(act=tf.nn.relu)(o_c1)
         o_c2 = Conv2d(
             n_filter=ngf * 2,
+
             filter_size=(ks, ks),
             strides=(2, 2),
             padding="SAME",
@@ -161,10 +146,12 @@ def autoenc_upsample(inputae, name):
             b_init=tf.constant_initializer(0.0)
         )(o_c1)
         o_c2 = InstanceNorm2d(act=tf.nn.relu)(o_c2)
+
         o_r1 = build_resnet_block_Att(o_c2, ngf * 2, "r1", padding)
 
         size_d1 = o_r1.get_shape().as_list()
-        o_c4 = upsamplingDeconv(o_r1, size=[size_d1[1] * 2, size_d1[2] * 2], is_scale=False, method=1, align_corners=False, name="up1")
+        o_c4 = upsamplingDeconv(o_r1, size=[size_d1[1] * 2, size_d1[2] * 2], name="up1")
+        o_c4 = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(o_c4)
         o_c4_end = Conv2d(
             n_filter=ngf * 2,
             filter_size=(3, 3),
@@ -174,10 +161,14 @@ def autoenc_upsample(inputae, name):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c4)
+
         o_c4_end = InstanceNorm2d(act=tf.nn.relu)(o_c4_end)
 
         size_d2 = o_c4_end.get_shape().as_list()
-        o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], is_scale=False, method=1, align_corners=False, name="up2")
+
+        o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], name="up2")
+
+        o_c5 = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(o_c5)
         o_c5_end = Conv2d(
             n_filter=ngf,
             filter_size=(3, 3),
@@ -187,7 +178,9 @@ def autoenc_upsample(inputae, name):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c5)
+
         o_c5_end = InstanceNorm2d(act=tf.nn.relu)(o_c5_end)
+        o_c5_end = PadLayer([[0, 0], [3, 3], [3, 3], [0, 0]], padding)(o_c5_end)
         o_c6_end = Conv2d(
             n_filter=1,
             filter_size=(f, f),
@@ -439,11 +432,11 @@ if __name__ == "__main__":
     channels = IMG_CHANNELS
 
     if tf.__version__[0] == "2":
-        input_a = Input(shape=[None, width, height, channels], 
+        input_a = Input(shape=[None, width, height, channels],
             dtype=tf.float32, name="input_A")
         input_b = Input(shape=[None, width, height, channels],
             dtype=tf.float32, name="input_B")
-        
+
         fake_pool_A = Input(shape=[None, width, height, channels],
             dtype=tf.float32, name="fake_pool_A")
         fake_pool_B = Input(shape=[None, width, height, channels],
@@ -464,12 +457,12 @@ if __name__ == "__main__":
         donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
 
     else:
-        input_a = InputLayer(tf.placeholder(shape=[None, width, height, channels], 
+        input_a = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="input_A"))
         InputLayer
-        input_b = InputLayer(tf.placeholder(shape=[None, width, height, channels], 
+        input_b = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="input_B"))
-        
+
         fake_pool_A = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="fake_pool_A"))
         fake_pool_B = InputLayer(tf.placeholder(shape=[None, width, height, channels],
@@ -502,7 +495,7 @@ if __name__ == "__main__":
 
     outputs = get_outputs(inputs, skip=1) # all the outputs
 
-    
+
 
 
     #inp_list = [tensor for tensor in inputs.values()]
