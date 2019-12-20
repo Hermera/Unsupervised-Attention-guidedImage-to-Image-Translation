@@ -177,7 +177,7 @@ def autoenc_upsample(inputae, name):
         o_c4_end = InstanceNorm2d(act=tf.nn.relu)(o_c4_end)
 
         size_d2 = o_c4_end.get_shape().as_list()
-        o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], is_scale=False, method=1, align_corners=Flase, name="up2")
+        o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], is_scale=False, method=1, align_corners=False, name="up2")
         o_c5_end = Conv2d(
             n_filter=ngf,
             filter_size=(3, 3),
