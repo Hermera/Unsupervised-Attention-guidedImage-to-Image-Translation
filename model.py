@@ -23,7 +23,7 @@ Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu
 """
 目前跟问题有关的函数：
 1. tf.pad 用 tensorlayer.layers.PadLayer 替换
-2. nn.relu 等用在作激活函数似乎不用替换
+2. nn.relu 等用在作激活函数似乎不用替换，单独的激活函数要用Lambdalayer包一层
 3. truncated_normal_initializer 可能需要用 tf.initializers.TruncatedNormal 替换
 wby's comment（所以不保证正确性:)）
 """
