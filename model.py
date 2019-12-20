@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
-                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, Lambda, InputLayer, UpSampling2d)
+                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, Lambda, InputLayer, UpSampling2d, Concat)
 from tensorlayer.models import Model
 
 IMG_CHANNELS = 3
@@ -47,41 +47,46 @@ def get_outputs(inputs, skip=False):
 
         mask_a = current_autoenc(images_a, "g_A_ae")
         mask_b = current_autoenc(images_b, "g_B_ae")
-        mask_a = tf.concat([mask_a] * 3, axis=3)
-        mask_b = tf.concat([mask_b] * 3, axis=3)
+        mask_a = Concat(concat_dim=3)([mask_a] * 3)
+        mask_b = Concat(concat_dim=3)([mask_b] * 3)
 
-        mask_a_on_a = tf.multiply(images_a, mask_a)
-        mask_b_on_b = tf.multiply(images_b, mask_b)
+        mask_a_on_a = Elementwise(combine_fn=tf.multiply)([images_a, mask_a])
+        mask_b_on_b = Elementwise(combine_fn=tf.multiply)([images_b, mask_b])
 
         prob_real_a_is_real = current_discriminator(images_a, mask_a, transition_rate, donorm, "d_A")
         prob_real_b_is_real = current_discriminator(images_b, mask_b, transition_rate, donorm, "d_B")
 
         fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
-        fake_images_b = tf.multiply(fake_images_b_from_g, mask_a) + tf.multiply(images_a, 1-mask_a)
+        fake_images_b = Elementwise(combine_fn=tf.add)([
+            Elementwise(combine_fn=tf.multiply)([fake_images_b_from_g, mask_a]),
+            Elementwise(combine_fn=tf.multiply)([images_a, 1-mask_a])])
 
         fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
-        fake_images_a = tf.multiply(fake_images_a_from_g, mask_b) + tf.multiply(images_b, 1-mask_b)
+        fake_images_a = Elementwise(combine_fn=tf.add)([
+            Elementwise(combine_fn=tf.multiply)([fake_images_a_from_g, mask_b]),
+            Elementwise(combine_fn=tf.multiply)([images_b, 1-mask_b])])
         scope.reuse_variables()
-
         prob_fake_a_is_real = current_discriminator(fake_images_a, mask_b, transition_rate, donorm, "d_A")
         prob_fake_b_is_real = current_discriminator(fake_images_b, mask_a, transition_rate, donorm, "d_B")
 
         mask_acycle = current_autoenc(fake_images_a, "g_A_ae")
         mask_bcycle = current_autoenc(fake_images_b, "g_B_ae")
-        mask_bcycle = tf.concat([mask_bcycle] * 3, axis=3)
-        mask_acycle = tf.concat([mask_acycle] * 3, axis=3)
+        mask_bcycle = Concat(concat_dim=3)([mask_bcycle] * 3)
+        mask_acycle = Concat(concat_dim=3)([mask_acycle] * 3)
 
-        mask_acycle_on_fakeA = tf.multiply(fake_images_a, mask_acycle)
-        mask_bcycle_on_fakeB = tf.multiply(fake_images_b, mask_bcycle)
+        mask_acycle_on_fakeA = Elementwise(combine_fn=tf.multiply)([fake_images_a, mask_acycle])
+        mask_bcycle_on_fakeB = Elementwise(combine_fn=tf.multiply)([fake_images_b, mask_bcycle])
 
         cycle_images_a_from_g = current_generator(fake_images_b, name="g_B", skip=skip)
         cycle_images_b_from_g = current_generator(fake_images_a, name="g_A", skip=skip)
 
-        cycle_images_a = tf.multiply(cycle_images_a_from_g,
-                                     mask_bcycle) + tf.multiply(fake_images_b, 1 - mask_bcycle)
+        cycle_images_a = Elementwise(combine_fn=tf.add)([
+            Elementwise(combine_fn=tf.multiply)([cycle_images_a_from_g, mask_bcycle]),
+            Elementwise(combine_fn=tf.multiply)([fake_images_b, 1 - mask_bcycle])])
 
-        cycle_images_b = tf.multiply(cycle_images_b_from_g,
-                                     mask_acycle) + tf.multiply(fake_images_a, 1 - mask_acycle)
+        cycle_images_b = Elementwise(combine_fn=tf.add)([
+            Elementwise(combine_fn=tf.multiply)([cycle_images_b_from_g, mask_acycle]),
+            Elementwise(combine_fn=tf.multiply)([fake_images_a, 1 - mask_acycle])])
 
         scope.reuse_variables()
 
@@ -191,7 +196,7 @@ def autoenc_upsample(inputae, name):
             b_init=tf.constant_initializer(0.0)
         )(o_c5_end)
 
-        return tf.nn.sigmoid(o_c6_end, "sigmoid")
+        return Lambda(tf.nn.sigmoid)(o_c6_end)
 
 def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.compat.v1.variable_scope(name):
@@ -341,8 +346,8 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
 
 def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"):
     with tf.compat.v1.variable_scope(name):
-        mask = tf.cast(tf.greater_equal(mask, transition_rate), tf.float32)
-        inputdisc = tf.multiply(inputdisc, mask)
+        mask = tf.cast(Elementwise(combine_fn=tf.greater_equal)([mask, transition_rate]), tf.float32)
+        inputdisc = Elementwise(combine_fn=tf.multiply)([inputdisc, mask])
         f = 4
         padw = 2
         lrelu = lambda x: tl.act.lrelu(x, 0.2)
