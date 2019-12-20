@@ -367,7 +367,7 @@ class CycleGAN(object):
         for epoch in range(self.global_step, self._max_step):
             print("In the epoch ", epoch)
             print("Saving the latest checkpoint...")
-            save_npz_dict(net.all_weights, os.path.join(self._output_dir, "AGGAN_%2d" % epoch))
+            save_npz_dict(net.all_weights, os.path.join(self._output_dir, "AGGAN_%02d" % epoch))
 
 
             # Setting lr

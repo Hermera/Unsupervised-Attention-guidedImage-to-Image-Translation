@@ -109,9 +109,9 @@ def get_outputs(inputs, skip=False):
         'cycle_images_b': cycle_images_b,
         'fake_images_a': fake_images_a,
         'fake_images_b': fake_images_b,
-        'masked_ims': [mask_a_on_a, mask_b_on_b, mask_acycle_on_fakeA, mask_bcycle_on_fakeB],
-        'masks': [mask_a, mask_b, mask_acycle, mask_bcycle],
-        'masked_gen_ims' : [fake_images_b_from_g, fake_images_a_from_g , cycle_images_a_from_g, cycle_images_b_from_g],
+        'masked_ims': Concat(concat_dim=0)([mask_a_on_a, mask_b_on_b, mask_acycle_on_fakeA, mask_bcycle_on_fakeB]),
+        'masks': Concat(concat_dim=0)([mask_a, mask_b, mask_acycle, mask_bcycle]),
+        'masked_gen_ims' : Concat(concat_dim=0)([fake_images_b_from_g, fake_images_a_from_g , cycle_images_a_from_g, cycle_images_b_from_g]),
         'mask_tmp' : mask_a,
     }
 
@@ -343,9 +343,11 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         )(o_c5)
 
         if skip is True:
-            out_gen = Lambda(tf.nn.tanh, name="t1")(Elementwise(combine_fn=tf.add)([inputgen, o_c6]))
+            #out_gen = Lambda(tf.nn.tanh, name="t1")(Elementwise(combine_fn=tf.add)([inputgen, o_c6]))
+            out_gen = Lambda(tf.nn.tanh)(Elementwise(combine_fn=tf.add)([inputgen, o_c6]))
         else:
-            out_gen = Lambda(tf.nn.tanh, name="t1")(o_c6)
+            #out_gen = Lambda(tf.nn.tanh, name="t1")(o_c6)
+            out_gen = Lambda(tf.nn.tanh)(o_c6)
 
         return out_gen
 
@@ -488,6 +490,6 @@ if __name__ == "__main__":
 
 
 
-    #inp_list = [tensor for tensor in inputs.values()]
-    #oup_list = [tensor for tensor in ouputs.values()]
-    #net = Model(inputs=inp_list, outputs=oup_list)
+    inp_list = [tensor for tensor in inputs.values()]
+    oup_list = [tensor for tensor in outputs.values()]
+    net = Model(inputs=inp_list, outputs=oup_list)
