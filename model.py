@@ -225,7 +225,7 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
             act=None,
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
-        )
+        )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
         return Lambda(tf.nn.relu)(Elementwise(combine_fn=tf.add)([out_res, inputres]))
@@ -377,7 +377,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         if donorm is True:
             o_c1 = InstanceNorm2d(act=lrelu)(o_c1)
         else:
-            o_c1 = lrelu(o_c1)
+            o_c1 = Lambda(fn=lrelu)(o_c1)
 
         pad_o_c1 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c1)
 
@@ -393,7 +393,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         if donorm is True:
             o_c2 = InstanceNorm2d(act=lrelu)(o_c2)
         else:
-            o_c2 = lrelu(o_c2)
+            o_c2 = Lambda(fn=lrelu)(o_c2)
 
         pad_o_c2 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c2)
 
@@ -409,7 +409,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         if donorm is True:
             o_c3 = InstanceNorm2d(act=lrelu)(o_c3)
         else:
-            o_c3 = lrelu(o_c3)
+            o_c3 = Lambda(fn=lrelu)(o_c3)
 
         pad_o_c3 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c3)
 
@@ -425,7 +425,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         if donorm is True:
             o_c4 = InstanceNorm2d(act=lrelu)(o_c4)
         else:
-            o_c4 = lrelu(o_c4)
+            o_c4 = Lambda(fn=lrelu)(o_c4)
 
         pad_o_c4 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c4)
 
