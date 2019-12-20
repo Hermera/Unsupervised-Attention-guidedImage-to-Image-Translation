@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
-                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, Lambda, InputLayer)
+                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, Lambda, InputLayer, UpSampling2d)
 from tensorlayer.models import Model
 
 IMG_CHANNELS = 3
@@ -131,7 +131,7 @@ def upsamplingDeconv(inputconv, size, is_scale, method, align_corners, name):
 
     except: # for TF 2.0
         with tf.compat.v1.variable_scope(name) as vs:
-            out = tf.compat.v1.image.resize_images(inputconv, size=size, method=method, align_corners=align_corners)
+            out = UpSampling2d(scale=size, method="nearest")(inputconv)
     return out
 
 def autoenc_upsample(inputae, name):
@@ -177,7 +177,7 @@ def autoenc_upsample(inputae, name):
         o_c4_end = InstanceNorm2d(act=tf.nn.relu)(o_c4_end)
 
         size_d2 = o_c4_end.get_shape().as_list()
-        o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], is_scale=False, method=1, align_corners=Flase, name="up2")
+        o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], is_scale=False, method=1, align_corners=False, name="up2")
         o_c5_end = Conv2d(
             n_filter=ngf,
             filter_size=(3, 3),
