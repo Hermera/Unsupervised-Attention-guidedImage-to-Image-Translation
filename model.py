@@ -355,9 +355,7 @@ def my_cast(x):
 def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"):
     with tf.compat.v1.variable_scope(name):
         tmp = Elementwise(combine_fn=tf.greater_equal)([mask, transition_rate])
-        print(vars(tmp))
         mask = Lambda(fn=my_cast)(tmp)
-        print(vars(mask))
         inputdisc = Elementwise(combine_fn=tf.multiply)([inputdisc, mask])
         f = 4
         padw = 2
