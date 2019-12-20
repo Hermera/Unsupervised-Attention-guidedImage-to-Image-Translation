@@ -221,7 +221,7 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
         return tf.nn.relu(out_res + inputres)
 
 def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         out_res = tl.layers.PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(inputres)
 
         out_res = Conv2d(
@@ -248,7 +248,7 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return tf.nn.relu(out_res + inputres)
+        return tl.layers.LambdaLayer(tf.nn.relu)(out_res + inputres)
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
     with tf.compat.v1.variable_scope(name):
@@ -333,9 +333,9 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         )(o_c5)
 
         if skip is True:
-            out_gen = tf.nn.tanh(inputgen + o_c6, name="t1")
+            out_gen = tl.layers.LambdaLayer(tf.nn.tanh, name="t1")(inputgen + o_c6)
         else:
-            out_gen = tf.nn.tanh(o_c6, "t1")
+            out_gen = tl.layers.LambdaLayer(tf.nn.tanh, name="t1")(o_c6)
 
         return out_gen
 
