@@ -225,7 +225,7 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
         )
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return Lambda(tf.nn.relu)(out_res + inputres)
+        return Lambda(tf.nn.relu)(Elementwise(combine_fn=tf.add)([out_res, inputres]))
 
 def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.compat.v1.variable_scope(name):
@@ -255,7 +255,7 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return Lambda(tf.nn.relu)(out_res + inputres)
+        return Lambda(tf.nn.relu)(Elementwise(combine_fn=tf.add)([out_res, inputres]))
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
     with tf.compat.v1.variable_scope(name):
@@ -340,7 +340,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         )(o_c5)
 
         if skip is True:
-            out_gen = Lambda(tf.nn.tanh, name="t1")(inputgen + o_c6)
+            out_gen = Lambda(tf.nn.tanh, name="t1")(Elementwise(combine_fn=tf.add)([inputgen, o_c6]))
         else:
             out_gen = Lambda(tf.nn.tanh, name="t1")(o_c6)
 
