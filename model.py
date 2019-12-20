@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
-                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, LambdaLayer, InputLayer)
+                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, Lambda, InputLayer)
 from tensorlayer.models import Model
 
 IMG_CHANNELS = 3
@@ -23,7 +23,7 @@ Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu
 """
 目前跟问题有关的函数：
 1. tf.pad 用 tensorlayer.layers.PadLayer 替换
-2. nn.relu 等用在作激活函数似乎不用替换，单独的激活函数要用Lambdalayer包一层
+2. nn.relu 等用在作激活函数似乎不用替换，单独的激活函数要用Lambda包一层
 3. truncated_normal_initializer 可能需要用 tf.initializers.TruncatedNormal 替换
 wby's comment（所以不保证正确性:)）
 """
@@ -225,7 +225,7 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
         )
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return LambdaLayer(tf.nn.relu)(out_res + inputres)
+        return Lambda(tf.nn.relu)(out_res + inputres)
 
 def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.compat.v1.variable_scope(name):
@@ -255,7 +255,7 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return LambdaLayer(tf.nn.relu)(out_res + inputres)
+        return Lambda(tf.nn.relu)(out_res + inputres)
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
     with tf.compat.v1.variable_scope(name):
@@ -340,9 +340,9 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         )(o_c5)
 
         if skip is True:
-            out_gen = LambdaLayer(tf.nn.tanh, name="t1")(inputgen + o_c6)
+            out_gen = Lambda(tf.nn.tanh, name="t1")(inputgen + o_c6)
         else:
-            out_gen = LambdaLayer(tf.nn.tanh, name="t1")(o_c6)
+            out_gen = Lambda(tf.nn.tanh, name="t1")(o_c6)
 
         return out_gen
 
