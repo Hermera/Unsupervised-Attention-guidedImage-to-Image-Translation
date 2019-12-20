@@ -220,7 +220,7 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )
         out_res = InstanceNorm2d(act=None)(out_res)
