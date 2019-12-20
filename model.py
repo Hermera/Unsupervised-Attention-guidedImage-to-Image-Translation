@@ -349,9 +349,13 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
 
         return out_gen
 
+def my_cast(x):
+    return tf.cast(x, tf.float32)
+
 def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"):
     with tf.compat.v1.variable_scope(name):
-        mask = tf.cast(Elementwise(combine_fn=tf.greater_equal)([mask, transition_rate]), tf.float32)
+        tmp = Elementwise(combine_fn=tf.greater_equal)([mask, transition_rate])
+        mask = Lambda(fn=my_cast)(tmp)
         inputdisc = Elementwise(combine_fn=tf.multiply)([inputdisc, mask])
         f = 4
         padw = 2
@@ -441,56 +445,32 @@ if __name__ == "__main__":
     height = IMG_HEIGHT
     channels = IMG_CHANNELS
 
-    if tf.__version__[0] == "2":
-        input_a = Input(shape=[None, width, height, channels],
-            dtype=tf.float32, name="input_A")
-        input_b = Input(shape=[None, width, height, channels],
-            dtype=tf.float32, name="input_B")
+    assert tf.__version__[0] == '2'
 
-        fake_pool_A = Input(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_A")
-        fake_pool_B = Input(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_B")
+    input_a = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="input_A")
+    input_b = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="input_B")
 
-        fake_pool_A_mask = Input(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_A_mask")
-        fake_pool_B_mask = Input(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_B_mask")
+    fake_pool_A = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_A")
+    fake_pool_B = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_B")
 
-        #global_step = tf.train.get_or_create_global_step()
+    fake_pool_A_mask = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_A_mask")
+    fake_pool_B_mask = Input(shape=[None, width, height, channels],
+        dtype=tf.float32, name="fake_pool_B_mask")
 
-        num_fake_inputs = 0
+    #global_step = tf.train.get_or_create_global_step()
 
-        # batch size = 1
-        learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
-        transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
-        donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
+    num_fake_inputs = 0
 
-    else:
-        input_a = InputLayer(tf.placeholder(shape=[None, width, height, channels],
-            dtype=tf.float32, name="input_A"))
-        InputLayer
-        input_b = InputLayer(tf.placeholder(shape=[None, width, height, channels],
-            dtype=tf.float32, name="input_B"))
+    # batch size = 1
+    learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
+    transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
+    donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
 
-        fake_pool_A = InputLayer(tf.placeholder(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_A"))
-        fake_pool_B = InputLayer(tf.placeholder(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_B"))
-
-        fake_pool_A_mask = InputLayer(tf.placeholder(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_A_mask"))
-        fake_pool_B_mask = InputLayer(tf.placeholder(shape=[None, width, height, channels],
-            dtype=tf.float32, name="fake_pool_B_mask"))
-
-        #global_step = tf.train.get_or_create_global_step()
-
-        num_fake_inputs = 0
-
-        # batch size = 1
-        learning_rate = InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="lr"))
-        transition_rate = InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="tr"))
-        donorm = InputLayer(tf.placeholder(shape=[1], dtype=tf.bool, name="donorm"))
 
     inputs = {
         'images_a': input_a,
