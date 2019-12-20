@@ -1,5 +1,6 @@
 """
 TODO: add parse_argument function and add the main routine (main function)
+NOTE: note to myself: tensorlayer has a significant bug. In core.py, line ~ 680
 """
 import copy
 import json
@@ -7,7 +8,7 @@ import numpy as np
 import os
 import random
 import argparse
-
+import pdb
 
 import tensorflow as tf
 assert tf.__version__[0] == '2'
@@ -102,7 +103,7 @@ class CycleGAN(object):
         inp_list = [tensor for tensor in inputs.values()]
         oup_list = [tensor for tensor in outputs.values()]
 
-        net = Model(inputs=inp_list, outputs=oup_list + inp_list)
+        net = Model(inputs=inp_list, outputs=oup_list)
 
         for var in net.trainable_weights:
             print(var.name)
@@ -126,44 +127,37 @@ class CycleGAN(object):
 
 
     def input_converter(self):
-        return [self.input_a, self.input_b, self.fake_pool_A, self.fake_pool_B, 
+        pdb.set_trace()
+        return [self.image_a, self.image_b, self.fake_pool_A, self.fake_pool_B, 
             self.fake_pool_A_mask, self.fake_pool_B_mask, self.transition_rate, self.donorm]
 
     def output_converter(self, outputs):
+        pdb.set_trace()
         self.prob_real_a_is_real = outputs[0]
         self.prob_real_b_is_real = outputs[1]
-        self.fake_images_a = outputs[2]
-        self.fake_images_b = outputs[3]
-        self.prob_fake_a_is_real = outputs[4]
-        self.prob_fake_b_is_real = outputs[5]
-
+        self.prob_fake_a_is_real = outputs[2]
+        self.prob_fake_b_is_real = outputs[3]
+        self.prob_fake_pool_a_is_real = outputs[4]
+        self.prob_fake_pool_b_is_real = outputs[5]
         self.cycle_images_a = outputs[6]
         self.cycle_images_b = outputs[7]
-
-        self.prob_fake_pool_a_is_real = outputs[8]
-        self.prob_fake_pool_b_is_real = outputs[9]
-        self.masks = outputs[10]
-        self.masked_gen_ims = outputs[11]
-        self.masked_ims = outputs[12]
+        self.fake_images_a = outputs[8]
+        self.fake_images_b = outputs[9]
+        
+        self.masked_ims = outputs[10]
+        self.masks = outputs[11]
+        self.masked_gen_ims = outputs[12]
         self.masks_ = outputs[13]
-        self.input_a = outputs[14]
-        self.input_b = outputs[15]
-        self.fake_pool_A = outputs[16]
-        self.fake_pool_B = outputs[17]
-        self.fake_pool_A_mask = outputs[18]
-        self.fake_pool_B_mask = outputs[19]
-        self.transition_rate = outputs[20]
-        self.donorm = outputs[21]
 
 
     def compute_losses(self):
         cycle_consistency_loss_a = \
             self._lambda_a * cycle_consistency_loss(
-                real_images=self.input_a, generated_images=self.cycle_images_a,
+                real_images=self.image_a, generated_images=self.cycle_images_a,
             )
         cycle_consistency_loss_b = \
             self._lambda_b * cycle_consistency_loss(
-                real_images=self.input_b, generated_images=self.cycle_images_b,
+                real_images=self.image_b, generated_images=self.cycle_images_b,
             )
 
         lsgan_loss_a = lsgan_loss_generator(self.prob_fake_a_is_real)
@@ -189,15 +183,25 @@ class CycleGAN(object):
         """
         A helper function to save images and updating html
         """
-        for i in range(figures_to_save):
-            figures_to_save[i] = figures_to_save[i].numpy()
-
+        for i in range(len(figures_to_save)):
+            try:
+                figures_to_save[i] = figures_to_save[i].numpy()
+            except:
+                pass
+        
+        pdb.set_trace()
         for name, figure_save in zip(names, figures_to_save):
             image_name = name + str(epoch) + "_" + str(i) + ".jpg"
             if 'mask_' in name:
-                figure = np.squeeze(figure_save[0])
+                if len(figure_save.shape) == 4:
+                    figure = np.squeeze(figure_save[0])
+                else:
+                    figure = figure_save
             else:
-                figure = ((np.squeeze(figure_save[0]) + 1) * 127.5).astype(np.uint8)
+                if len(figure_save.shape) == 4:
+                    figure = ((np.squeeze(figure_save[0]) + 1) * 127.5).astype(np.uint8)
+                else:
+                    figure = ((figure_save + 1) * 127.5).astype(np.uint8)
 
             tl_save_image(figure, image_path=os.path.join(self._images_dir, image_name))
 
@@ -268,6 +272,7 @@ class CycleGAN(object):
                 '&nbsp &nbsp &nbsp &nbsp &nbsp'
 
         net.eval()
+        #pdb.set_trace()
 
         exists_or_mkdir(self._images_dir)
 
@@ -280,6 +285,7 @@ class CycleGAN(object):
             for i in range(0, self._num_imgs_to_save):
                 print("Saving image {}/{}...".format(i, self._num_imgs_to_save))
 
+                pdb.set_trace()
                 self.image_a, self.image_b = next(input_iter)
                 tmp_imgA = self.get_fake_image_pool(
                     self.num_fake_inputs, self.fake_images_A
@@ -295,8 +301,9 @@ class CycleGAN(object):
 
                 self.transition_rate = np.array([0.1], dtype=np.float32)
                 self.donorm = np.array([True], dtype=np.bool)
-
+                
                 self.output_converter(net(self.input_converter()))
+                
 
                 figures_to_save = [self.image_a, self.masks[0], self.masked_ims[0], self.fake_images_b,
                                    self.image_b, self.masks[1], self.masked_ims[1], self.fake_images_a]

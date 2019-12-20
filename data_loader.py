@@ -4,6 +4,7 @@ import numpy as np
 
 import cyclegan_datasets
 import model
+import pdb
 
 def minibatches_unsupervised(inputs=None, batch_size=None, allow_dynamic_batch_size=False, shuffle=False):
     """
@@ -102,8 +103,8 @@ def load_data(dataset_name, image_size_before_crop,
     inputs['images_j'] = tl.prepro.crop_multi(inputs['images_j'], 
           model.IMG_WIDTH, model.IMG_HEIGHT, is_random=True)
 
-    inputs['images_i']=np.array(inputs['images_i'])
-    inputs['images_j']=np.array(inputs['images_j'])
+    inputs['images_i']=np.array(inputs['images_i'], dtype=np.float32)
+    inputs['images_j']=np.array(inputs['images_j'], dtype=np.float32)
     
     inputs['images_i']=(inputs['images_i']/127.5)-1
     inputs['images_j']=(inputs['images_j']/127.5)-1

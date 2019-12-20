@@ -3,6 +3,7 @@ import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
                                 LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, Lambda, InputLayer, UpSampling2d, Concat)
 from tensorlayer.models import Model
+import pdb
 
 IMG_CHANNELS = 3
 IMG_WIDTH = 256
@@ -60,14 +61,18 @@ def get_outputs(inputs, skip=False):
         r_mask_a = Lambda(lambda x: 1-x)(mask_a)
 
         fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
-        fake_images_b = Elementwise(combine_fn=tf.add)([
-            Elementwise(combine_fn=tf.multiply)([fake_images_b_from_g, mask_a]),
-            Elementwise(combine_fn=tf.multiply)([images_a, r_mask_a])])
+        pdb.set_trace()
+        tmp_x = Elementwise(combine_fn=tf.multiply)([fake_images_b_from_g, mask_a])
+        tmp_y = Elementwise(combine_fn=tf.multiply)([images_a, r_mask_a])
+        fake_images_b = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
+        pdb.set_trace()
 
         fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
-        fake_images_a = Elementwise(combine_fn=tf.add)([
-            Elementwise(combine_fn=tf.multiply)([fake_images_a_from_g, mask_b]),
-            Elementwise(combine_fn=tf.multiply)([images_b, r_mask_b])])
+
+        tmp_x = Elementwise(combine_fn=tf.multiply)([fake_images_a_from_g, mask_b])
+        tmp_y = Elementwise(combine_fn=tf.multiply)([images_b, r_mask_b])
+        fake_images_a = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
+
         scope.reuse_variables()
         prob_fake_a_is_real = current_discriminator(fake_images_a, mask_b, transition_rate, donorm, "d_A")
         prob_fake_b_is_real = current_discriminator(fake_images_b, mask_a, transition_rate, donorm, "d_B")
@@ -85,13 +90,14 @@ def get_outputs(inputs, skip=False):
 
         r_mask_acycle = Lambda(lambda x: 1-x)(mask_acycle)
         r_mask_bcycle = Lambda(lambda x: 1-x)(mask_bcycle)
-        cycle_images_a = Elementwise(combine_fn=tf.add)([
-            Elementwise(combine_fn=tf.multiply)([cycle_images_a_from_g, mask_bcycle]),
-            Elementwise(combine_fn=tf.multiply)([fake_images_b, r_mask_bcycle])])
 
-        cycle_images_b = Elementwise(combine_fn=tf.add)([
-            Elementwise(combine_fn=tf.multiply)([cycle_images_b_from_g, mask_acycle]),
-            Elementwise(combine_fn=tf.multiply)([fake_images_a, r_mask_acycle])])
+        tmp_x = Elementwise(combine_fn=tf.multiply)([cycle_images_a_from_g, mask_bcycle])
+        tmp_y = Elementwise(combine_fn=tf.multiply)([fake_images_b, r_mask_bcycle])
+        cycle_images_a = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
+
+        tmp_x = Elementwise(combine_fn=tf.multiply)([cycle_images_b_from_g, mask_acycle])
+        tmp_y = Elementwise(combine_fn=tf.multiply)([fake_images_a, r_mask_acycle])
+        cycle_images_b = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
 
         scope.reuse_variables()
 
@@ -228,7 +234,9 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return Lambda(tf.nn.relu)(Elementwise(combine_fn=tf.add)([out_res, inputres]))
+        tmp = Elementwise(combine_fn=tf.add)([out_res, inputres])
+
+        return Lambda(tf.nn.relu)(tmp)
 
 def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.compat.v1.variable_scope(name):
@@ -258,7 +266,8 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return Lambda(tf.nn.relu)(Elementwise(combine_fn=tf.add)([out_res, inputres]))
+        tmp = Elementwise(combine_fn=tf.add)([out_res, inputres])
+        return Lambda(tf.nn.relu)(tmp)
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
     with tf.compat.v1.variable_scope(name):
@@ -344,7 +353,8 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
 
         if skip is True:
             #out_gen = Lambda(tf.nn.tanh, name="t1")(Elementwise(combine_fn=tf.add)([inputgen, o_c6]))
-            out_gen = Lambda(tf.nn.tanh)(Elementwise(combine_fn=tf.add)([inputgen, o_c6]))
+            tmp = Elementwise(combine_fn=tf.add)([inputgen, o_c6])
+            out_gen = Lambda(tf.nn.tanh)(tmp)
         else:
             #out_gen = Lambda(tf.nn.tanh, name="t1")(o_c6)
             out_gen = Lambda(tf.nn.tanh)(o_c6)
@@ -493,3 +503,6 @@ if __name__ == "__main__":
     inp_list = [tensor for tensor in inputs.values()]
     oup_list = [tensor for tensor in outputs.values()]
     net = Model(inputs=inp_list, outputs=oup_list)
+
+    fin = open("model_oup.txt", "w")
+    fin.write("%s" % net)
