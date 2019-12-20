@@ -1,7 +1,7 @@
 import tensorflow as tf
 import tensorlayer as tl
 from tensorlayer.layers import (BatchNorm2d, Conv2d, Dense, Flatten, Input, DeConv2d, Lambda, \
-                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d)
+                                LocalResponseNorm, MaxPool2d, Elementwise, InstanceNorm2d, PadLayer, LambdaLayer, InputLayer)
 from tensorlayer.models import Model
 
 IMG_CHANNELS = 3
@@ -28,6 +28,7 @@ Concat, padding有现成的，multiply, add可以用ElementwiseLayer, tf.nn.relu
 wby's comment（所以不保证正确性:)）
 """
 
+
 def get_outputs(inputs, skip=False):
 
     images_a = inputs['images_a']
@@ -39,7 +40,7 @@ def get_outputs(inputs, skip=False):
     transition_rate = inputs['transition_rate']
     donorm = inputs['donorm']
 
-    with tf.variable_scope('Model') as scope:
+    with tf.compat.v1.variable_scope('Model') as scope:
         current_autoenc = autoenc_upsample
         current_discriminator = discriminator
         current_generator = build_generator_9blocks
@@ -120,15 +121,21 @@ def upsamplingDeconv(inputconv, size, is_scale, method, align_corners, name):
         raise Exception("Donot support shape %s" % inputconv.get_shape())
     print("  [TL] UpSampling2dLayer %s: is_scale:%s size:%s method:%d align_corners:%s" %
           (name, is_scale, size, method, align_corners))
-    with tf.variable_scope(name) as vs:
-        try:
+
+    try:
+        with tf.variable_scope(name) as vs:
+            try:
+                out = tf.image.resize_images(inputconv, size=size, method=method, align_corners=align_corners)
+            except:  # for TF 0.10
+                out = tf.image.resize_images(inputconv, new_height=size[0], new_width=size[1], method=method, align_corners=align_corners)
+
+    except: # for TF 2.0
+        with tf.compat.v1.variable_scope(name) as vs:
             out = tf.image.resize_images(inputconv, size=size, method=method, align_corners=align_corners)
-        except:  # for TF 0.10
-            out = tf.image.resize_images(inputconv, new_height=size[0], new_width=size[1], method=method, align_corners=align_corners)
     return out
 
 def autoenc_upsample(inputae, name):
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         f = 7
         ks = 3
         padding = "REFLECT"
@@ -140,7 +147,7 @@ def autoenc_upsample(inputae, name):
             strides=(2, 2),
             act=None,
             padding="VALID",
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_input)
         o_c1 = InstanceNorm2d(act=tf.nn.relu)(o_c1)
@@ -150,7 +157,7 @@ def autoenc_upsample(inputae, name):
             strides=(2, 2),
             padding="SAME",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c1)
         o_c2 = InstanceNorm2d(act=tf.nn.relu)(o_c2)
@@ -164,7 +171,7 @@ def autoenc_upsample(inputae, name):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c4)
         o_c4_end = InstanceNorm2d(act=tf.nn.relu)(o_c4_end)
@@ -177,7 +184,7 @@ def autoenc_upsample(inputae, name):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c5)
         o_c5_end = InstanceNorm2d(act=tf.nn.relu)(o_c5_end)
@@ -187,26 +194,26 @@ def autoenc_upsample(inputae, name):
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(o_c5_end)
 
         return tf.nn.sigmoid(o_c6_end, "sigmoid")
 
 def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
-    with tf.variable_scope(name):
-        out_res = tf.pad(inputres, [[0, 0], [1, 1], [1, 1], [0, 0]], padding)
+    with tf.compat.v1.variable_scope(name):
+        out_res = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(inputres)
         out_res = Conv2d(
             n_filter=dim,
             filter_size=(3, 3),
             strides=(1, 1),
             padding="VALID",
             act=None,
-            W_init=tf.truncated_normal_initializer(stddev=0.02),
+            W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(out_res)
         out_res = InstanceNorm2d(act=tf.nn.relu)(out_res)
-        out_res = tf.pad(out_res, [[0, 0], [1, 1], [1, 1], [0, 0]], padding)
+        out_res = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(out_res)
         out_res = Conv2d(
             n_filter=dim,
             filter_size=(3, 3),
@@ -218,11 +225,11 @@ def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
         )
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return tf.nn.relu(out_res + inputres)
+        return LambdaLayer(tf.nn.relu)(out_res + inputres)
 
 def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.compat.v1.variable_scope(name):
-        out_res = tl.layers.PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(inputres)
+        out_res = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(inputres)
 
         out_res = Conv2d(
             n_filter=dim,
@@ -235,7 +242,7 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=tf.nn.relu)(out_res)
 
-        out_res = tl.layers.PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(out_res)
+        out_res = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(out_res)
 
         out_res = Conv2d(
             n_filter=dim,
@@ -248,14 +255,14 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         )(out_res)
         out_res = InstanceNorm2d(act=None)(out_res)
 
-        return tl.layers.LambdaLayer(tf.nn.relu)(out_res + inputres)
+        return LambdaLayer(tf.nn.relu)(out_res + inputres)
 
 def build_generator_9blocks(inputgen, name="generator", skip = False):
     with tf.compat.v1.variable_scope(name):
         f = 7
         ks = 3
         padding  = "CONSTANT"
-        inputgen = tl.layers.PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputgen)
+        inputgen = PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputgen)
 
         o_c1 = Conv2d(
             n_filter=ngf,
@@ -333,9 +340,9 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
         )(o_c5)
 
         if skip is True:
-            out_gen = tl.layers.LambdaLayer(tf.nn.tanh, name="t1")(inputgen + o_c6)
+            out_gen = LambdaLayer(tf.nn.tanh, name="t1")(inputgen + o_c6)
         else:
-            out_gen = tl.layers.LambdaLayer(tf.nn.tanh, name="t1")(o_c6)
+            out_gen = LambdaLayer(tf.nn.tanh, name="t1")(o_c6)
 
         return out_gen
 
@@ -347,7 +354,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         padw = 2
         lrelu = lambda x: tl.act.lrelu(x, 0.2)
 
-        pad_input = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(inputdisc)
+        pad_input = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(inputdisc)
 
         o_c1 = Conv2d(
             n_filter=ndf,
@@ -363,7 +370,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c1 = lrelu(o_c1)
 
-        pad_o_c1 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c1)
+        pad_o_c1 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c1)
 
         o_c2 = Conv2d(
             n_filter=ndf * 2,
@@ -379,7 +386,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c2 = lrelu(o_c2)
 
-        pad_o_c2 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c2)
+        pad_o_c2 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c2)
 
         o_c3 = Conv2d(
             n_filter=ndf * 4,
@@ -395,7 +402,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c3 = lrelu(o_c3)
 
-        pad_o_c3 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c3)
+        pad_o_c3 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c3)
 
         o_c4 = Conv2d(
             n_filter=ndf * 8,
@@ -411,7 +418,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
         else:
             o_c4 = lrelu(o_c4)
 
-        pad_o_c4 = tl.layers.PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c4)
+        pad_o_c4 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c4)
 
         o_c5 = Conv2d(
             n_filter=1,
@@ -457,20 +464,20 @@ if __name__ == "__main__":
         donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
 
     else:
-        input_a = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels], 
+        input_a = InputLayer(tf.placeholder(shape=[None, width, height, channels], 
             dtype=tf.float32, name="input_A"))
         InputLayer
-        input_b = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels], 
+        input_b = InputLayer(tf.placeholder(shape=[None, width, height, channels], 
             dtype=tf.float32, name="input_B"))
         
-        fake_pool_A = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+        fake_pool_A = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="fake_pool_A"))
-        fake_pool_B = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+        fake_pool_B = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="fake_pool_B"))
 
-        fake_pool_A_mask = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+        fake_pool_A_mask = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="fake_pool_A_mask"))
-        fake_pool_B_mask = tl.layers.InputLayer(tf.placeholder(shape=[None, width, height, channels],
+        fake_pool_B_mask = InputLayer(tf.placeholder(shape=[None, width, height, channels],
             dtype=tf.float32, name="fake_pool_B_mask"))
 
         #global_step = tf.train.get_or_create_global_step()
@@ -478,9 +485,9 @@ if __name__ == "__main__":
         num_fake_inputs = 0
 
         # batch size = 1
-        learning_rate = tl.layers.InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="lr"))
-        transition_rate = tl.layers.InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="tr"))
-        donorm = tl.layers.InputLayer(tf.placeholder(shape=[1], dtype=tf.bool, name="donorm"))
+        learning_rate = InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="lr"))
+        transition_rate = InputLayer(tf.placeholder(shape=[1], dtype=tf.float32, name="tr"))
+        donorm = InputLayer(tf.placeholder(shape=[1], dtype=tf.bool, name="donorm"))
 
     inputs = {
         'images_a': input_a,
