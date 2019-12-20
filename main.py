@@ -189,6 +189,8 @@ class CycleGAN(object):
         """
         A helper function to save images and updating html
         """
+        for i in range(figures_to_save):
+            figures_to_save[i] = figures_to_save[i].numpy()
 
         for name, figure_save in zip(names, figures_to_save):
             image_name = name + str(epoch) + "_" + str(i) + ".jpg"
