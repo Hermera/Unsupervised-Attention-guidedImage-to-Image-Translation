@@ -1,6 +1,5 @@
 """
-TODO: add parse_argument function and add the main routine (main function)
-NOTE: note to myself: tensorlayer has a significant bug. In core.py, line ~ 680
+NOTE: tensorlayer has a significant bug. In core.py, line ~ 680
 """
 import copy
 import json
@@ -127,12 +126,12 @@ class CycleGAN(object):
 
 
     def input_converter(self):
-        pdb.set_trace()
+        #pdb.set_trace()
         return [self.image_a, self.image_b, self.fake_pool_A, self.fake_pool_B, 
             self.fake_pool_A_mask, self.fake_pool_B_mask, self.transition_rate, self.donorm]
 
     def output_converter(self, outputs):
-        pdb.set_trace()
+        #pdb.set_trace()
         self.prob_real_a_is_real = outputs[0]
         self.prob_real_b_is_real = outputs[1]
         self.prob_fake_a_is_real = outputs[2]
@@ -183,13 +182,13 @@ class CycleGAN(object):
         """
         A helper function to save images and updating html
         """
-        for i in range(len(figures_to_save)):
+        for j in range(len(figures_to_save)):
             try:
-                figures_to_save[i] = figures_to_save[i].numpy()
+                figures_to_save[j] = figures_to_save[j].numpy()
             except:
                 pass
         
-        pdb.set_trace()
+        #pdb.set_trace()
         for name, figure_save in zip(names, figures_to_save):
             image_name = name + str(epoch) + "_" + str(i) + ".jpg"
             if 'mask_' in name:
@@ -236,6 +235,7 @@ class CycleGAN(object):
             input_iter = minibatches(images_i, images_j, batch_size=1, shuffle=True)
 
             for i in range(0, self._num_imgs_to_save):
+                #pdb.set_trace()
                 print("Saving image {}/{}...".format(i, self._num_imgs_to_save))
                 self.image_a, self.image_b = next(input_iter)
                 tmp_imgA = self.get_fake_image_pool(
@@ -285,7 +285,7 @@ class CycleGAN(object):
             for i in range(0, self._num_imgs_to_save):
                 print("Saving image {}/{}...".format(i, self._num_imgs_to_save))
 
-                pdb.set_trace()
+                #pdb.set_trace()
                 self.image_a, self.image_b = next(input_iter)
                 tmp_imgA = self.get_fake_image_pool(
                     self.num_fake_inputs, self.fake_images_A
@@ -381,12 +381,12 @@ class CycleGAN(object):
             curr_lr = self._base_lr
             if epoch >= half_training_ep:
                 curr_lr -= self._base_lr * (epoch - half_training_ep) / half_training_ep
-                self.g_A_trainer.learning_rate = curr_lr
-                self.g_B_trainer.learning_rate = curr_lr
-                self.g_A_trainer_bis.learning_rate = curr_lr
-                self.g_B_trainer_bis.learning_rate = curr_lr
-                self.d_A_trainer.learning_rate = curr_lr
-                self.d_B_trainer.learning_rate = curr_lr
+            self.g_A_trainer.learning_rate = curr_lr
+            self.g_B_trainer.learning_rate = curr_lr
+            self.g_A_trainer_bis.learning_rate = curr_lr
+            self.g_B_trainer_bis.learning_rate = curr_lr
+            self.d_A_trainer.learning_rate = curr_lr
+            self.d_B_trainer.learning_rate = curr_lr
 
             if epoch < self._switch:
                 curr_tr = 0
@@ -414,7 +414,6 @@ class CycleGAN(object):
             assert (len(self.inputs_img_i) == len(self.inputs_img_j) and max_images == len(self.inputs_img_i))
 
             self.save_images(net, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
-
             net.train()
 
             input_iter = minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1, shuffle=True)
@@ -447,6 +446,7 @@ class CycleGAN(object):
                     )
                     self.compute_losses()
 
+                pdb.set_trace()
                 grad = tape.gradient(self.d_B_loss, self.d_B_vars)
                 self.d_B_trainer.apply_gradients(zip(grad, self.d_B_vars))
 
@@ -460,7 +460,7 @@ class CycleGAN(object):
                 to_train_B.apply_gradients(zip(grad, to_train_B_vars))
 
                 tot_loss = self.g_A_loss + self.g_B_loss + self.d_A_loss + self.d_B_loss
-
+                
                 print("[training_info] g_A_loss = {}, g_B_loss = {}, d_A_loss = {}, d_B_loss = {}, \
                     tot_loss = {}, lr={}, curr_tr={}".format(self.g_A_loss, self.g_B_loss, self.d_A_loss, \
                     self.d_B_loss, tot_loss, curr_lr, curr_tr))

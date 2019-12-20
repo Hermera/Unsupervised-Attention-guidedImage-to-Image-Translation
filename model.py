@@ -61,11 +61,11 @@ def get_outputs(inputs, skip=False):
         r_mask_a = Lambda(lambda x: 1-x)(mask_a)
 
         fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
-        pdb.set_trace()
+        #pdb.set_trace()
         tmp_x = Elementwise(combine_fn=tf.multiply)([fake_images_b_from_g, mask_a])
         tmp_y = Elementwise(combine_fn=tf.multiply)([images_a, r_mask_a])
         fake_images_b = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
-        pdb.set_trace()
+        #pdb.set_trace()
 
         fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
 
