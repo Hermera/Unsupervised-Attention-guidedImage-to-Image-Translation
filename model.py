@@ -140,7 +140,7 @@ def autoenc_upsample(inputae, name):
         ks = 3
         padding = "REFLECT"
 
-        pad_input = tf.pad(inputae, [[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)
+        pad_input = PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputae)
         o_c1 = Conv2d(
             n_filter=ngf,
             filter_size=(f, f),
