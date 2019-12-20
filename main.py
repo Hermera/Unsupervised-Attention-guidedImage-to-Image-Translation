@@ -42,7 +42,7 @@ class CycleGAN(object):
         self._lambda_a = lambda_a
         self._lambda_b = lambda_b
         self._output_dir = os.path.join(output_root_dir,
-                                        'switch'+str(switch)+'_thres_'+str(threshold_fg))
+                                        'switch_'+str(switch)+'_thres_'+str(threshold_fg))
         self._images_dir = os.path.join(self._output_dir, 'imgs')
         self._num_imgs_to_save = 20
         self._to_restore = to_restore
@@ -349,7 +349,7 @@ class CycleGAN(object):
 
         if self._to_restore:
             checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
-            load_and_assign_npz_dict(checkpoint_name, network=net)
+            load_and_assign_npz_dict(checkpoint_name + ".npz", network=net)
             self.global_step = int(checkpoint_name[-2:])
         else:
             self.global_step = 0
@@ -489,7 +489,7 @@ class CycleGAN(object):
 
         print("Loading the latest checkpoint...")
         checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
-        load_and_assign_npz_dict(checkpoint_name, network=net)
+        load_and_assign_npz_dict(checkpoint_name + ".npz", network=net)
         self.global_step = int(self._checkpoint_name[-2:])
 
         self._num_imgs_to_save = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
