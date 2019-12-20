@@ -446,7 +446,7 @@ class CycleGAN(object):
                     )
                     self.compute_losses()
 
-                pdb.set_trace()
+                #pdb.set_trace()
                 grad = tape.gradient(self.d_B_loss, self.d_B_vars)
                 self.d_B_trainer.apply_gradients(zip(grad, self.d_B_vars))
 
