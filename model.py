@@ -56,15 +56,18 @@ def get_outputs(inputs, skip=False):
         prob_real_a_is_real = current_discriminator(images_a, mask_a, transition_rate, donorm, "d_A")
         prob_real_b_is_real = current_discriminator(images_b, mask_b, transition_rate, donorm, "d_B")
 
+        r_mask_b = Lambda(lambda x: 1-x)(mask_b)
+        r_mask_a = Lambda(lambda x: 1-x)(mask_a)
+
         fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
         fake_images_b = Elementwise(combine_fn=tf.add)([
             Elementwise(combine_fn=tf.multiply)([fake_images_b_from_g, mask_a]),
-            Elementwise(combine_fn=tf.multiply)([images_a, 1-mask_a])])
+            Elementwise(combine_fn=tf.multiply)([images_a, r_mask_a])])
 
         fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
         fake_images_a = Elementwise(combine_fn=tf.add)([
             Elementwise(combine_fn=tf.multiply)([fake_images_a_from_g, mask_b]),
-            Elementwise(combine_fn=tf.multiply)([images_b, 1-mask_b])])
+            Elementwise(combine_fn=tf.multiply)([images_b, r_mask_b])])
         scope.reuse_variables()
         prob_fake_a_is_real = current_discriminator(fake_images_a, mask_b, transition_rate, donorm, "d_A")
         prob_fake_b_is_real = current_discriminator(fake_images_b, mask_a, transition_rate, donorm, "d_B")
@@ -80,13 +83,15 @@ def get_outputs(inputs, skip=False):
         cycle_images_a_from_g = current_generator(fake_images_b, name="g_B", skip=skip)
         cycle_images_b_from_g = current_generator(fake_images_a, name="g_A", skip=skip)
 
+        r_mask_acycle = Lambda(lambda x: 1-x)(mask_acycle)
+        r_mask_bcycle = Lambda(lambda x: 1-x)(mask_bcycle)
         cycle_images_a = Elementwise(combine_fn=tf.add)([
             Elementwise(combine_fn=tf.multiply)([cycle_images_a_from_g, mask_bcycle]),
-            Elementwise(combine_fn=tf.multiply)([fake_images_b, 1 - mask_bcycle])])
+            Elementwise(combine_fn=tf.multiply)([fake_images_b, r_mask_bcycle])])
 
         cycle_images_b = Elementwise(combine_fn=tf.add)([
             Elementwise(combine_fn=tf.multiply)([cycle_images_b_from_g, mask_acycle]),
-            Elementwise(combine_fn=tf.multiply)([fake_images_a, 1 - mask_acycle])])
+            Elementwise(combine_fn=tf.multiply)([fake_images_a, r_mask_acycle])])
 
         scope.reuse_variables()
 
