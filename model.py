@@ -131,7 +131,7 @@ def upsamplingDeconv(inputconv, size, is_scale, method, align_corners, name):
 
     except: # for TF 2.0
         with tf.compat.v1.variable_scope(name) as vs:
-            out = tf.image.resize_images(inputconv, size=size, method=method, align_corners=align_corners)
+            out = tf.compat.v1.image.resize_images(inputconv, size=size, method=method, align_corners=align_corners)
     return out
 
 def autoenc_upsample(inputae, name):
