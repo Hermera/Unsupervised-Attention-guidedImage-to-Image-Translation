@@ -8,6 +8,7 @@ import os
 import random
 import argparse
 import pdb
+os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
 import tensorflow as tf
 assert tf.__version__[0] == '2'
