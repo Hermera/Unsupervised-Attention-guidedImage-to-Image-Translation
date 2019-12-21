@@ -30,7 +30,17 @@ wby's comment（所以不保证正确性:)）
 """
 
 
-def get_outputs(inputs, skip=False):
+def build_model(skip=False):
+    g_A_ae = autoenc_upsample(name="g_A_ae")
+    g_B_ae = autoenc_upsample(name="g_B_ae")
+    d_A = discriminator(name="d_A")
+    d_B = discriminator(name="d_B")
+    g_A = build_generator_9blocks("g_A", skip)
+    g_B = build_generator_9blocks("g_B", skip)
+    return (g_A_ae, g_B_ae, d_A, d_B, g_A, g_B)
+
+
+def get_outputs(inputs, nets):
 
     images_a = inputs['images_a']
     images_b = inputs['images_b']
@@ -41,68 +51,53 @@ def get_outputs(inputs, skip=False):
     transition_rate = inputs['transition_rate']
     donorm = inputs['donorm']
 
-    with tf.compat.v1.variable_scope('Model') as scope:
-        current_autoenc = autoenc_upsample
-        current_discriminator = discriminator
-        current_generator = build_generator_9blocks
+    g_A_ae, g_B_ae, d_A, d_B, g_A, g_B = nets
 
-        mask_a = current_autoenc(images_a, "g_A_ae")
-        mask_b = current_autoenc(images_b, "g_B_ae")
-        mask_a = Concat(concat_dim=3)([mask_a] * 3)
-        mask_b = Concat(concat_dim=3)([mask_b] * 3)
+    mask_a = g_A_ae(images_a)
+    mask_b = g_B_ae(images_b)
 
-        mask_a_on_a = Elementwise(combine_fn=tf.multiply)([images_a, mask_a])
-        mask_b_on_b = Elementwise(combine_fn=tf.multiply)([images_b, mask_b])
+    mask_a = tf.concat([mask_a] * 3, axis=3)
+    mask_b = tf.concat([mask_b] * 3, axis=3)
 
-        prob_real_a_is_real = current_discriminator(images_a, mask_a, transition_rate, donorm, "d_A")
-        prob_real_b_is_real = current_discriminator(images_b, mask_b, transition_rate, donorm, "d_B")
+    mask_a_on_a = tf.multiply(images_a, mask_a)
+    mask_b_on_b = tf.multiply(images_b, mask_b)
 
-        r_mask_b = Lambda(lambda x: 1-x)(mask_b)
-        r_mask_a = Lambda(lambda x: 1-x)(mask_a)
+    prob_real_a_is_real = d_A([images_a, mask_a, transition_rate, donorm])
+    prob_real_b_is_real = d_B([images_b, mask_b, transition_rate, donorm])
 
-        fake_images_b_from_g = current_generator(images_a, name="g_A", skip=skip)
-        #pdb.set_trace()
-        tmp_x = Elementwise(combine_fn=tf.multiply)([fake_images_b_from_g, mask_a])
-        tmp_y = Elementwise(combine_fn=tf.multiply)([images_a, r_mask_a])
-        fake_images_b = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
-        #pdb.set_trace()
 
-        fake_images_a_from_g = current_generator(images_b, name="g_B", skip=skip)
+    fake_images_b_from_g = g_A(images_a)
+    #pdb.set_trace()
+    fake_images_b = tf.multiply(fake_images_b_from_g, mask_a) + tf.multiply(images_a, 1-mask_a)
+    #pdb.set_trace()
 
-        tmp_x = Elementwise(combine_fn=tf.multiply)([fake_images_a_from_g, mask_b])
-        tmp_y = Elementwise(combine_fn=tf.multiply)([images_b, r_mask_b])
-        fake_images_a = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
+    fake_images_a_from_g = g_B(images_b)
 
-        scope.reuse_variables()
-        prob_fake_a_is_real = current_discriminator(fake_images_a, mask_b, transition_rate, donorm, "d_A")
-        prob_fake_b_is_real = current_discriminator(fake_images_b, mask_a, transition_rate, donorm, "d_B")
+    fake_images_a = tf.multiply(fake_images_a_from_g, mask_b) + tf.multiply(images_b, 1-mask_b)
 
-        mask_acycle = current_autoenc(fake_images_a, "g_A_ae")
-        mask_bcycle = current_autoenc(fake_images_b, "g_B_ae")
-        mask_bcycle = Concat(concat_dim=3)([mask_bcycle] * 3)
-        mask_acycle = Concat(concat_dim=3)([mask_acycle] * 3)
+    prob_fake_a_is_real = d_A([fake_images_a, mask_b, transition_rate, donorm])
+    prob_fake_b_is_real = d_B([fake_images_b, mask_a, transition_rate, donorm])
 
-        mask_acycle_on_fakeA = Elementwise(combine_fn=tf.multiply)([fake_images_a, mask_acycle])
-        mask_bcycle_on_fakeB = Elementwise(combine_fn=tf.multiply)([fake_images_b, mask_bcycle])
+    mask_acycle = g_A_ae(fake_images_a)
+    mask_bcycle = g_B_ae(fake_images_b)
+    mask_bcycle = tf.concat([mask_bcycle] * 3, axis=3)
+    mask_acycle = tf.concat([mask_acycle] * 3, axis=3)
 
-        cycle_images_a_from_g = current_generator(fake_images_b, name="g_B", skip=skip)
-        cycle_images_b_from_g = current_generator(fake_images_a, name="g_A", skip=skip)
+    mask_acycle_on_fakeA = tf.multiply(fake_images_a, mask_acycle)
+    mask_bcycle_on_fakeB = tf.multiply(fake_images_b, mask_bcycle)
 
-        r_mask_acycle = Lambda(lambda x: 1-x)(mask_acycle)
-        r_mask_bcycle = Lambda(lambda x: 1-x)(mask_bcycle)
+    cycle_images_a_from_g = g_B(fake_images_b)
+    cycle_images_b_from_g = g_B(fake_images_a)
 
-        tmp_x = Elementwise(combine_fn=tf.multiply)([cycle_images_a_from_g, mask_bcycle])
-        tmp_y = Elementwise(combine_fn=tf.multiply)([fake_images_b, r_mask_bcycle])
-        cycle_images_a = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
+    cycle_images_a = tf.multiply(cycle_images_a_from_g,
+                                mask_bcycle) + tf.multiply(fake_images_b, 1 - mask_bcycle)
 
-        tmp_x = Elementwise(combine_fn=tf.multiply)([cycle_images_b_from_g, mask_acycle])
-        tmp_y = Elementwise(combine_fn=tf.multiply)([fake_images_a, r_mask_acycle])
-        cycle_images_b = Elementwise(combine_fn=tf.add)([tmp_x, tmp_y])
+    cycle_images_b = tf.multiply(cycle_images_b_from_g,
+                                mask_acycle) + tf.multiply(fake_images_a, 1 - mask_acycle)
 
-        scope.reuse_variables()
 
-        prob_fake_pool_a_is_real = current_discriminator(fake_pool_a, fake_pool_a_mask, transition_rate, donorm, "d_A")
-        prob_fake_pool_b_is_real = current_discriminator(fake_pool_b, fake_pool_b_mask, transition_rate, donorm, "d_B")
+    prob_fake_pool_a_is_real = d_A([fake_pool_a, fake_pool_a_mask, transition_rate, donorm])
+    prob_fake_pool_b_is_real = d_B([fake_pool_b, fake_pool_b_mask, transition_rate, donorm])
 
     return {
         'prob_real_a_is_real': prob_real_a_is_real,
@@ -115,9 +110,9 @@ def get_outputs(inputs, skip=False):
         'cycle_images_b': cycle_images_b,
         'fake_images_a': fake_images_a,
         'fake_images_b': fake_images_b,
-        'masked_ims': Concat(concat_dim=0)([mask_a_on_a, mask_b_on_b, mask_acycle_on_fakeA, mask_bcycle_on_fakeB]),
-        'masks': Concat(concat_dim=0)([mask_a, mask_b, mask_acycle, mask_bcycle]),
-        'masked_gen_ims' : Concat(concat_dim=0)([fake_images_b_from_g, fake_images_a_from_g , cycle_images_a_from_g, cycle_images_b_from_g]),
+        'masked_ims': tf.concat([mask_a_on_a, mask_b_on_b, mask_acycle_on_fakeA, mask_bcycle_on_fakeB], axis=0),
+        'masks': tf.concat([mask_a, mask_b, mask_acycle, mask_bcycle], axis=0),
+        'masked_gen_ims' : tf.concat([fake_images_b_from_g, fake_images_a_from_g, cycle_images_a_from_g, cycle_images_b_from_g], axis=0),
         'mask_tmp' : mask_a,
     }
 
@@ -132,8 +127,9 @@ def upsamplingDeconv(inputconv, size, name):
     return out
 
 
-def autoenc_upsample(inputae, name):
+def autoenc_upsample(name):
     with tf.compat.v1.variable_scope(name):
+        inputae = Input(shape=[None, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS], dtype=tf.float32)
         f = 7
         ks = 3
         padding = "REFLECT"
@@ -207,7 +203,8 @@ def autoenc_upsample(inputae, name):
             b_init=tf.constant_initializer(0.0)
         )(o_c5_end)
 
-        return Lambda(tf.nn.sigmoid)(o_c6_end)
+        output = Lambda(tf.nn.sigmoid)(o_c6_end)
+        return Model(inputs=inputae, outputs=output)
 
 def build_resnet_block(inputres, dim, name="resnet", padding="REFLECT"):
     with tf.compat.v1.variable_scope(name):
@@ -269,12 +266,14 @@ def build_resnet_block_Att(inputres, dim, name="resnet", padding="REFLECT"):
         tmp = Elementwise(combine_fn=tf.add)([out_res, inputres])
         return Lambda(tf.nn.relu)(tmp)
 
-def build_generator_9blocks(inputgen, name="generator", skip = False):
+def build_generator_9blocks(name="generator", skip = False):
     with tf.compat.v1.variable_scope(name):
+        #pdb.set_trace()
+        inputgen = Input(shape=[None, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS], dtype=tf.float32)
         f = 7
         ks = 3
         padding  = "CONSTANT"
-        inputgen = PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputgen)
+        padgen = PadLayer([[0, 0], [ks, ks], [ks, ks], [0, 0]], padding)(inputgen)
 
         o_c1 = Conv2d(
             n_filter=ngf,
@@ -284,7 +283,7 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             act=None,
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
-        )(inputgen)
+        )(padgen)
         o_c1 = InstanceNorm2d(act=tf.nn.relu)(o_c1)
 
         o_c2 = Conv2d(
@@ -359,16 +358,22 @@ def build_generator_9blocks(inputgen, name="generator", skip = False):
             #out_gen = Lambda(tf.nn.tanh, name="t1")(o_c6)
             out_gen = Lambda(tf.nn.tanh)(o_c6)
 
-        return out_gen
+        return Model(inputs=inputgen, outputs=out_gen)
 
 def my_cast(x):
     return tf.cast(x, tf.float32)
 
-def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"):
+def discriminator(name="discriminator"):
     with tf.compat.v1.variable_scope(name):
-        tmp = Elementwise(combine_fn=tf.greater_equal)([mask, transition_rate])
+        inputdisc_in = Input(shape=[None, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS], dtype=tf.float32)
+        mask_in = Input(shape=[None, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS], dtype=tf.float32)
+        transition_rate = Input(shape=[1], dtype=tf.float32)
+        donorm = Input(shape=[1], dtype=tf.bool)
+
+        tmp = Elementwise(combine_fn=tf.greater_equal)([mask_in, transition_rate])
         mask = Lambda(fn=my_cast)(tmp)
-        inputdisc = Elementwise(combine_fn=tf.multiply)([inputdisc, mask])
+        inputdisc = Elementwise(combine_fn=tf.multiply)([inputdisc_in, mask])
+
         f = 4
         padw = 2
         lrelu = lambda x: tl.act.lrelu(x, 0.2)
@@ -449,7 +454,7 @@ def discriminator(inputdisc, mask, transition_rate, donorm, name="discriminator"
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c4)
 
-        return o_c5
+        return Model(inputs=[inputdisc_in, mask_in, transition_rate, donorm], outputs=o_c5)
 
 
 if __name__ == "__main__":
@@ -495,14 +500,4 @@ if __name__ == "__main__":
         'donorm': donorm,
     }
 
-    outputs = get_outputs(inputs, skip=1) # all the outputs
-
-
-
-
-    inp_list = [tensor for tensor in inputs.values()]
-    oup_list = [tensor for tensor in outputs.values()]
-    net = Model(inputs=inp_list, outputs=oup_list)
-
-    fin = open("model_oup.txt", "w")
-    fin.write("%s" % net)
+    build_model(skip=True)

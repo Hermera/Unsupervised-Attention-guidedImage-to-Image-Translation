@@ -17,6 +17,7 @@ assert tf.__version__[0] == '2'
 import cyclegan_datasets
 import data_loader
 import model
+import utils
 from test_loss import cycle_consistency_loss, lsgan_loss_discriminator, lsgan_loss_generator
 
 
@@ -26,7 +27,6 @@ from tensorlayer.files import exists_or_mkdir
 from tensorlayer.prepro import threading_data
 from tensorlayer.visualize import save_image as tl_save_image
 from tensorlayer.iterate import minibatches
-from tensorlayer.files import load_and_assign_npz_dict, save_npz_dict
 from tensorlayer.models import Model
 
 
@@ -64,7 +64,6 @@ class CycleGAN(object):
         height = model.IMG_HEIGHT
         channels = model.IMG_CHANNELS
 
-
         self.input_a = Input(shape=[None, width, height, channels], 
             dtype=tf.float32, name="input_A")
         self.input_b = Input(shape=[None, width, height, channels],
@@ -87,6 +86,38 @@ class CycleGAN(object):
         self.transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
         self.donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
 
+        self.num_fake_inputs = 0
+        # batch size = 1
+        self.learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
+
+        nets = model.build_model(skip=self._skip)
+
+        trainable_weights = []
+        for net in nets:
+            trainable_weights += net.trainable_weights
+
+        for var in trainable_weights:
+            print(var.name)
+
+        self.d_A_vars = [var for var in trainable_weights if 'd_A' in var.name]
+        self.g_A_vars = [var for var in trainable_weights if 'g_A' in var.name]
+        self.d_B_vars = [var for var in trainable_weights if 'd_B' in var.name]
+        self.g_B_vars = [var for var in trainable_weights if 'g_B' in var.name]
+        self.g_Ae_vars = [var for var in trainable_weights if 'g_A_ae' in var.name]
+        self.g_Be_vars = [var for var in trainable_weights if 'g_B_ae' in var.name]
+
+
+        self.g_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+        self.g_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+        self.g_A_trainer_bis = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+        self.g_B_trainer_bis = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+        self.d_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+        self.d_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+
+        return nets
+
+
+    def input_converter(self):
         inputs = {
             'images_a': self.input_a,
             'images_b': self.input_b,
@@ -97,57 +128,26 @@ class CycleGAN(object):
             'transition_rate': self.transition_rate,
             'donorm': self.donorm,
         }
-
-        outputs = model.get_outputs(inputs, skip=self._skip) # all the outputs
-
-        inp_list = [tensor for tensor in inputs.values()]
-        oup_list = [tensor for tensor in outputs.values()]
-
-        net = Model(inputs=inp_list, outputs=oup_list)
-
-        for var in net.trainable_weights:
-            print(var.name)
-
-        self.d_A_vars = [var for var in net.trainable_weights if 'd_A' in var.name]
-        self.g_A_vars = [var for var in net.trainable_weights if 'g_A/' in var.name]
-        self.d_B_vars = [var for var in net.trainable_weights if 'd_B' in var.name]
-        self.g_B_vars = [var for var in net.trainable_weights if 'g_B/' in var.name]
-        self.g_Ae_vars = [var for var in net.trainable_weights if 'g_A_ae' in var.name]
-        self.g_Be_vars = [var for var in net.trainable_weights if 'g_B_ae' in var.name]
-
-
-        self.g_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.g_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.g_A_trainer_bis = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.g_B_trainer_bis = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.d_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.d_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-
-        return net
-
-
-    def input_converter(self):
-        #pdb.set_trace()
-        return [self.image_a, self.image_b, self.fake_pool_A, self.fake_pool_B, 
-            self.fake_pool_A_mask, self.fake_pool_B_mask, self.transition_rate, self.donorm]
+        return inputs
 
     def output_converter(self, outputs):
         #pdb.set_trace()
-        self.prob_real_a_is_real = outputs[0]
-        self.prob_real_b_is_real = outputs[1]
-        self.prob_fake_a_is_real = outputs[2]
-        self.prob_fake_b_is_real = outputs[3]
-        self.prob_fake_pool_a_is_real = outputs[4]
-        self.prob_fake_pool_b_is_real = outputs[5]
-        self.cycle_images_a = outputs[6]
-        self.cycle_images_b = outputs[7]
-        self.fake_images_a = outputs[8]
-        self.fake_images_b = outputs[9]
-        
-        self.masked_ims = outputs[10]
-        self.masks = outputs[11]
-        self.masked_gen_ims = outputs[12]
-        self.masks_ = outputs[13]
+        self.prob_real_a_is_real = outputs['prob_real_a_is_real']
+        self.prob_real_b_is_real = outputs['prob_real_b_is_real']
+        self.fake_images_a = outputs['fake_images_a']
+        self.fake_images_b = outputs['fake_images_b']
+        self.prob_fake_a_is_real = outputs['prob_fake_a_is_real']
+        self.prob_fake_b_is_real = outputs['prob_fake_b_is_real']
+
+        self.cycle_images_a = outputs['cycle_images_a']
+        self.cycle_images_b = outputs['cycle_images_b']
+
+        self.prob_fake_pool_a_is_real = outputs['prob_fake_pool_a_is_real']
+        self.prob_fake_pool_b_is_real = outputs['prob_fake_pool_b_is_real']
+        self.masks = outputs['masks']
+        self.masked_gen_ims = outputs['masked_gen_ims']
+        self.masked_ims = outputs['masked_ims']
+        self.masks_ = outputs['mask_tmp']
 
 
     def compute_losses(self):
@@ -216,11 +216,11 @@ class CycleGAN(object):
         v_html.write("<br>")
 
 
-    def save_images(self, net, epoch, curr_tr, images_i, images_j):
+    def save_images(self, nets, epoch, curr_tr, images_i, images_j):
         """
         Saves input and output images.
         """
-        net.eval()
+        utils.set_mode(nets, "eval")
 
         exists_or_mkdir(self._images_dir)
 
@@ -254,7 +254,7 @@ class CycleGAN(object):
                 self.transition_rate = np.array([curr_tr], dtype=np.float32)
                 self.donorm = np.array([donorm], dtype=np.bool)
 
-                self.output_converter(net(self.input_converter()))
+                self.output_converter(model.get_outputs(self.input_converter(), nets))
 
                 figures_to_save = [self.image_a, self.image_b, self.fake_images_b, self.fake_images_a, 
                                    self.cycle_images_a, self.cycle_images_b, self.masks[0], self.masks[1]]
@@ -262,7 +262,7 @@ class CycleGAN(object):
                 self.figure_writer(figures_to_save, names, v_html, epoch, i, html_mode=0)
                 
 
-    def save_images_bis(self, net, epoch, images_i, images_j):
+    def save_images_bis(self, nets, epoch, images_i, images_j):
         """
         Saves input and output images.
         """
@@ -272,7 +272,7 @@ class CycleGAN(object):
                 '&nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp ' \
                 '&nbsp &nbsp &nbsp &nbsp &nbsp'
 
-        net.eval()
+        utils.set_mode(nets, "eval")
         #pdb.set_trace()
 
         exists_or_mkdir(self._images_dir)
@@ -303,7 +303,7 @@ class CycleGAN(object):
                 self.transition_rate = np.array([0.1], dtype=np.float32)
                 self.donorm = np.array([True], dtype=np.bool)
                 
-                self.output_converter(net(self.input_converter()))
+                self.output_converter(model.get_outputs(self.input_converter(), nets))
                 
 
                 figures_to_save = [self.image_a, self.masks[0], self.masked_ims[0], self.fake_images_b,
@@ -345,7 +345,7 @@ class CycleGAN(object):
         """
 
         # Build the network and compute losses
-        net = self.model_setup()
+        nets = self.model_setup()
 
 
         max_images = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
@@ -357,7 +357,7 @@ class CycleGAN(object):
 
         if self._to_restore:
             checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
-            load_and_assign_npz_dict(checkpoint_name + ".npz", network=net)
+            utils.load(checkpoint_name, nets=nets)
             self.global_step = int(checkpoint_name[-2:])
         else:
             self.global_step = 0
@@ -375,7 +375,7 @@ class CycleGAN(object):
         for epoch in range(self.global_step, self._max_step):
             print("In the epoch ", epoch)
             print("Saving the latest checkpoint...")
-            save_npz_dict(net.all_weights, os.path.join(self._output_dir, "AGGAN_%02d" % epoch))
+            utils.save(nets, os.path.join(self._output_dir, "AGGAN_%02d" % epoch))
 
 
             # Setting lr
@@ -414,8 +414,8 @@ class CycleGAN(object):
             self.inputs_img_j = tot_inputs['images_j']
             assert (len(self.inputs_img_i) == len(self.inputs_img_j) and max_images == len(self.inputs_img_i))
 
-            self.save_images(net, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
-            net.train()
+            self.save_images(nets, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
+            utils.set_mode(nets, "train")
 
             input_iter = minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1, shuffle=True)
             for i in range(max_images):
@@ -438,7 +438,7 @@ class CycleGAN(object):
                 self.donorm = np.array([donorm], dtype=np.bool)
 
                 with tf.GradientTape(persistent=True) as tape:
-                    self.output_converter(net(self.input_converter()))
+                    self.output_converter(model.get_outputs(self.input_converter(), nets))
                     self.upd_fake_image_pool(
                         self.num_fake_inputs, self.fake_images_b, self.masks[0], self.fake_images_B
                     )
@@ -487,7 +487,7 @@ class CycleGAN(object):
         self.inputs_img_j = tot_inputs['images_j']
         assert len(self.inputs_img_i) == len(self.inputs_img_j)
 
-        net = self.model_setup()
+        nets = self.model_setup()
 
         self.upd_fake_image_pool(self.num_fake_inputs, self.fake_pool_A,
             self.fake_pool_A_mask, self.fake_images_A)
@@ -497,12 +497,12 @@ class CycleGAN(object):
 
         print("Loading the latest checkpoint...")
         checkpoint_name = os.path.join(self._checkpoint_dir, self._checkpoint_name)
-        load_and_assign_npz_dict(checkpoint_name + ".npz", network=net)
+        utils.load(checkpoint_name, nets=nets)
         self.global_step = int(self._checkpoint_name[-2:])
 
         self._num_imgs_to_save = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
 
-        self.save_images_bis(net, self.global_step, self.inputs_img_i, self.inputs_img_j)
+        self.save_images_bis(nets, self.global_step, self.inputs_img_i, self.inputs_img_j)
 
 
 
