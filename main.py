@@ -119,8 +119,8 @@ class CycleGAN(object):
 
     def input_converter(self):
         inputs = {
-            'images_a': self.input_a,
-            'images_b': self.input_b,
+            'images_a': self.image_a,
+            'images_b': self.image_b,
             'fake_pool_a': self.fake_pool_A,
             'fake_pool_b': self.fake_pool_B,
             'fake_pool_a_mask': self.fake_pool_A_mask,
