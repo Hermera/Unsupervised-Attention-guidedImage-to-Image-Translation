@@ -1,6 +1,3 @@
-"""
-NOTE: tensorlayer has a significant bug. In core.py, line ~ 680
-"""
 import copy
 import json
 import numpy as np
@@ -29,6 +26,9 @@ from tensorlayer.visualize import save_image as tl_save_image
 from tensorlayer.iterate import minibatches
 from tensorlayer.models import Model
 
+"""
+NOTE: tensorlayer has a potential bug. In core.py, line ~ 680
+"""
 
 class CycleGAN(object):
     def __init__(self, pool_size, lambda_a,
@@ -347,6 +347,9 @@ class CycleGAN(object):
         # Build the network and compute losses
         nets = self.model_setup()
 
+        summary_writer = tf.summary.create_file_writer(os.path.join(self._output_dir, "log"))
+        summary_writer.set_as_default()
+
 
         max_images = cyclegan_datasets.DATASET_TO_SIZES[self._dataset_name]
         half_training_ep = int(self._max_step / 2)
@@ -418,6 +421,7 @@ class CycleGAN(object):
             utils.set_mode(nets, "train")
 
             input_iter = minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1, shuffle=True)
+            
             for i in range(max_images):
                 print("Processing batch {}/{} in {}th epoch".format(i, max_images, epoch))
 
@@ -466,9 +470,17 @@ class CycleGAN(object):
                     tot_loss = {}, lr={}, curr_tr={}".format(self.g_A_loss, self.g_B_loss, self.d_A_loss, \
                     self.d_B_loss, tot_loss, curr_lr, curr_tr))
 
+                tf.summary.scalar('g_A_loss', self.g_A_loss, step=self.global_step * max_images + i)
+                tf.summary.scalar('g_B_loss', self.g_B_loss, step=self.global_step * max_images + i)
+                tf.summary.scalar('d_A_loss', self.d_A_loss, step=self.global_step * max_images + i)
+                tf.summary.scalar('d_B_loss', self.d_B_loss, step=self.global_step * max_images + i)
+                tf.summary.scalar('learning_rate', to_train_A.learning_rate, step=self.global_step * max_images + i)
+                tf.summary.scalar('total_loss', tot_loss, step=self.global_step * max_images + i)
+
                 self.num_fake_inputs += 1
                 
             self.global_step = epoch + 1
+            summary_writer.flush()
 
 
 
