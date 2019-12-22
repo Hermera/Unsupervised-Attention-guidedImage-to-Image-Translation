@@ -37,6 +37,7 @@ def build_model(skip=False):
     d_B = discriminator(name="d_B")
     g_A = build_generator_9blocks("g_A", skip)
     g_B = build_generator_9blocks("g_B", skip)
+    #pdb.set_trace()
     return (g_A_ae, g_B_ae, d_A, d_B, g_A, g_B)
 
 
