@@ -87,7 +87,7 @@ def get_outputs(inputs, nets):
     mask_bcycle_on_fakeB = tf.multiply(fake_images_b, mask_bcycle)
 
     cycle_images_a_from_g = g_B(fake_images_b)
-    cycle_images_b_from_g = g_B(fake_images_a)
+    cycle_images_b_from_g = g_A(fake_images_a)
 
     cycle_images_a = tf.multiply(cycle_images_a_from_g,
                                 mask_bcycle) + tf.multiply(fake_images_b, 1 - mask_bcycle)
@@ -363,12 +363,17 @@ def build_generator_9blocks(name="generator", skip = False):
 def my_cast(x):
     return tf.cast(x, tf.float32)
 
+def my_cond(inps):
+    # inps[0]: cond, inps[1]: x, inps[2]: y
+    # cond? x: y
+    return tf.multiply(inps[0], inps[1]) + tf.multiply(1 - inps[0], inps[2])
+
 def discriminator(name="discriminator"):
     with tf.compat.v1.variable_scope(name):
         inputdisc_in = Input(shape=[None, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS], dtype=tf.float32)
         mask_in = Input(shape=[None, IMG_WIDTH, IMG_HEIGHT, IMG_CHANNELS], dtype=tf.float32)
         transition_rate = Input(shape=[1], dtype=tf.float32)
-        donorm = Input(shape=[1], dtype=tf.bool)
+        donorm = Input(shape=[1], dtype=tf.float32)
 
         tmp = Elementwise(combine_fn=tf.greater_equal)([mask_in, transition_rate])
         mask = Lambda(fn=my_cast)(tmp)
@@ -389,10 +394,9 @@ def discriminator(name="discriminator"):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_input)
-        if donorm is True:
-            o_c1 = InstanceNorm2d(act=lrelu)(o_c1)
-        else:
-            o_c1 = Lambda(fn=lrelu)(o_c1)
+        #pdb.set_trace()
+        o_c1 = Lambda(fn=my_cond)([donorm, InstanceNorm2d(act=None)(o_c1), o_c1])
+        o_c1 = Lambda(fn=lrelu)(o_c1)
 
         pad_o_c1 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c1)
 
@@ -405,10 +409,8 @@ def discriminator(name="discriminator"):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c1)
-        if donorm is True:
-            o_c2 = InstanceNorm2d(act=lrelu)(o_c2)
-        else:
-            o_c2 = Lambda(fn=lrelu)(o_c2)
+        o_c2 = Lambda(fn=my_cond)([donorm, InstanceNorm2d(act=None)(o_c2), o_c2])
+        o_c2 = Lambda(fn=lrelu)(o_c2)
 
         pad_o_c2 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c2)
 
@@ -421,10 +423,8 @@ def discriminator(name="discriminator"):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c2)
-        if donorm is True:
-            o_c3 = InstanceNorm2d(act=lrelu)(o_c3)
-        else:
-            o_c3 = Lambda(fn=lrelu)(o_c3)
+        o_c3 = Lambda(fn=my_cond)([donorm, InstanceNorm2d(act=None)(o_c3), o_c3])
+        o_c3 = Lambda(fn=lrelu)(o_c3)
 
         pad_o_c3 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c3)
 
@@ -437,10 +437,8 @@ def discriminator(name="discriminator"):
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c3)
-        if donorm is True:
-            o_c4 = InstanceNorm2d(act=lrelu)(o_c4)
-        else:
-            o_c4 = Lambda(fn=lrelu)(o_c4)
+        o_c4 = Lambda(fn=my_cond)([donorm, InstanceNorm2d(act=None)(o_c4), o_c4])
+        o_c4 = Lambda(fn=lrelu)(o_c4)
 
         pad_o_c4 = PadLayer([[0, 0], [padw, padw], [padw, padw], [0, 0]], "CONSTANT")(o_c4)
 
@@ -449,7 +447,7 @@ def discriminator(name="discriminator"):
             filter_size=(f, f),
             strides=(1, 1),
             padding="VALID",
-            act=lrelu,
+            act=None,
             W_init=tf.initializers.TruncatedNormal(stddev=0.02),
             b_init=tf.constant_initializer(0.0)
         )(pad_o_c4)

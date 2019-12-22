@@ -84,7 +84,7 @@ class CycleGAN(object):
         # batch size = 1
         self.learning_rate = Input(shape=[1], dtype=tf.float32, name="lr")
         self.transition_rate = Input(shape=[1], dtype=tf.float32, name="tr")
-        self.donorm = Input(shape=[1], dtype=tf.bool, name="donorm")
+        self.donorm = Input(shape=[1], dtype=tf.float32, name="donorm")
 
         self.num_fake_inputs = 0
         # batch size = 1
@@ -100,19 +100,19 @@ class CycleGAN(object):
             print(var.name)
 
         self.d_A_vars = [var for var in trainable_weights if 'd_A' in var.name]
-        self.g_A_vars = [var for var in trainable_weights if 'g_A' in var.name]
+        self.g_A_vars = [var for var in trainable_weights if 'g_A/' in var.name]
         self.d_B_vars = [var for var in trainable_weights if 'd_B' in var.name]
-        self.g_B_vars = [var for var in trainable_weights if 'g_B' in var.name]
+        self.g_B_vars = [var for var in trainable_weights if 'g_B/' in var.name]
         self.g_Ae_vars = [var for var in trainable_weights if 'g_A_ae' in var.name]
         self.g_Be_vars = [var for var in trainable_weights if 'g_B_ae' in var.name]
 
 
-        self.g_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.g_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.g_A_trainer_bis = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.g_B_trainer_bis = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.d_A_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
-        self.d_B_trainer = tf.optimizers.Adam(self.learning_rate, beta_1=0.5)
+        self.g_A_trainer = tf.optimizers.Adam(self._base_lr, beta_1=0.5)
+        self.g_B_trainer = tf.optimizers.Adam(self._base_lr, beta_1=0.5)
+        self.g_A_trainer_bis = tf.optimizers.Adam(self._base_lr, beta_1=0.5)
+        self.g_B_trainer_bis = tf.optimizers.Adam(self._base_lr, beta_1=0.5)
+        self.d_A_trainer = tf.optimizers.Adam(self._base_lr, beta_1=0.5)
+        self.d_B_trainer = tf.optimizers.Adam(self._base_lr, beta_1=0.5)
 
         return nets
 
@@ -252,7 +252,7 @@ class CycleGAN(object):
                 self.fake_pool_B = tmp_imgB["im"]
 
                 self.transition_rate = np.array([curr_tr], dtype=np.float32)
-                self.donorm = np.array([donorm], dtype=np.bool)
+                self.donorm = np.array([donorm], dtype=np.float32)
 
                 self.output_converter(model.get_outputs(self.input_converter(), nets))
 
@@ -301,7 +301,7 @@ class CycleGAN(object):
                 self.fake_pool_B = tmp_imgB["im"]
 
                 self.transition_rate = np.array([0.1], dtype=np.float32)
-                self.donorm = np.array([True], dtype=np.bool)
+                self.donorm = np.array([True], dtype=np.float32)
                 
                 self.output_converter(model.get_outputs(self.input_converter(), nets))
                 
@@ -324,7 +324,9 @@ class CycleGAN(object):
             if num_fakes == 1:
                 fake_pool[0] = copy.deepcopy(tmp)
         else:
-            random_id = random.randint(0, self._pool_size - 1)
+            random_id = self._pool_size - 1
+            if random.random() > self._pool_upd_threshold:
+                random_id = random.randint(0, self._pool_size - 1)
             fake_pool[random_id] = copy.deepcopy(tmp)
 
 
@@ -439,7 +441,7 @@ class CycleGAN(object):
                 self.fake_pool_B = tmp_imgB["im"]
 
                 self.transition_rate = np.array([curr_tr], dtype=np.float32)
-                self.donorm = np.array([donorm], dtype=np.bool)
+                self.donorm = np.array([donorm], dtype=np.float32)
 
                 with tf.GradientTape(persistent=True) as tape:
                     self.output_converter(model.get_outputs(self.input_converter(), nets))
