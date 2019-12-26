@@ -220,7 +220,7 @@ class CycleGAN(object):
         """
         Saves input and output images.
         """
-        utils.set_mode(nets, "eval")
+        nets = utils.set_mode(nets, "eval")
 
         exists_or_mkdir(self._images_dir)
 
@@ -272,7 +272,7 @@ class CycleGAN(object):
                 '&nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp &nbsp ' \
                 '&nbsp &nbsp &nbsp &nbsp &nbsp'
 
-        utils.set_mode(nets, "eval")
+        nets = utils.set_mode(nets, "eval")
         #pdb.set_trace()
 
         exists_or_mkdir(self._images_dir)
@@ -420,7 +420,7 @@ class CycleGAN(object):
             assert (len(self.inputs_img_i) == len(self.inputs_img_j) and max_images == len(self.inputs_img_i))
 
             self.save_images(nets, epoch, curr_tr, self.inputs_img_i, self.inputs_img_j)
-            utils.set_mode(nets, "train")
+            nets = utils.set_mode(nets, "train")
 
             input_iter = minibatches(self.inputs_img_i, self.inputs_img_j, batch_size=1, shuffle=True)
             

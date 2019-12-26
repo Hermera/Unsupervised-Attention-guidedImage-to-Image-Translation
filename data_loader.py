@@ -93,7 +93,6 @@ def load_data(dataset_name, image_size_before_crop,
     inputs['images_j'] = resize_wrapper(inputs['images_j'], 
           image_size_before_crop)
     
-    
     if do_flipping is True:
         inputs['images_i'] = tl.prepro.flip_axis(inputs['images_i'], axis=1, is_random=True)
         inputs['images_j'] = tl.prepro.flip_axis(inputs['images_j'], axis=1, is_random=True)

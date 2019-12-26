@@ -180,7 +180,6 @@ def autoenc_upsample(name):
         size_d2 = o_c4_end.get_shape().as_list()
 
         o_c5 = upsamplingDeconv(o_c4_end, size=[size_d2[1] * 2, size_d2[2] * 2], name="up2")
-
         o_c5 = PadLayer([[0, 0], [1, 1], [1, 1], [0, 0]], padding)(o_c5)
         o_c5_end = Conv2d(
             n_filter=ngf,
