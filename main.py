@@ -26,9 +26,6 @@ from tensorlayer.visualize import save_image as tl_save_image
 from tensorlayer.iterate import minibatches
 from tensorlayer.models import Model
 
-"""
-NOTE: tensorlayer has a potential bug. In core.py, line ~ 680
-"""
 
 class CycleGAN(object):
     def __init__(self, pool_size, lambda_a,
