@@ -6,7 +6,7 @@ A Tensorlayer implementation of the paper "[Unsupervised Attention-guided Image-
 
 ## Network architecture
 
-![network_structure](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/network_structure.png)
+![network_structure](./imgs/network_structure.png)
 
 
 
@@ -16,19 +16,19 @@ The images within one row are: original input $s$, the attention mask $s_a$, the
 
 - horse2zebra:
 
-![h2z1](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/h2z1.png)
+![h2z1](./imgs/h2z1.png)
 
-![h2z2](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/h2z2.png)
+![h2z2](./imgs/h2z2.png)
 
-![h2z3](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/h2z3.png)
+![h2z3](./imgs/h2z3.png)
 
 - zebra2horse:
 
-    ![z2h1](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/z2h1.png)
+    ![z2h1](./imgs/z2h1.png)
 
-    ![z2h2](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/z2h2.png)
+    ![z2h2](./imgs/z2h2.png)
 
-    ![z2h3](/home/hanwenchen/桌面/前沿计算/experiments/main_project/imgs/z2h3.png)
+    ![z2h3](./imgs/z2h3.png)
 
 
 
