@@ -34,7 +34,7 @@ The images within one row are: original input $s$, the attention mask $s_a$, the
 
 ## requirements
 
-- Ubuntu 18.04.3
+- Ubuntu 16.04.6 LTS
 - Python 3.7
 - Tensorflow-gpu 2.0.0
 - Tensorlayer 2.1.1
