@@ -34,9 +34,11 @@ The images within one row are: original input $s$, the attention mask $s_a$, the
 
 ## requirements
 
-- Python3.7
+- Ubuntu 18.04.3
+- Python 3.7
 - Tensorflow-gpu 2.0.0
 - Tensorlayer 2.1.1
+- CUDA 10.0
 
 - anaconda
 
